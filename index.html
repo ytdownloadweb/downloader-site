@@ -79,7 +79,7 @@
             </div>
 
             <div id="offlineNotice" class="offline-notice">
-                <strong>Bot is currently offline.</strong><br>
+                <strong>Server is currently offline.</strong><br>
                 The download server restarts periodically. It will be back online shortly.<br>
                 You can also use the bot directly on Telegram — send your link to the bot.
             </div>
@@ -124,28 +124,46 @@
         </footer>
     </div>
 
-    <!-- Load tunnel status from bot repo (script tag avoids CORS issues) -->
-    <script src="https://raw.githubusercontent.com/hackaking20/WZML-X-Bot/main/tunnel-status.js"></script>
+    <script src="https://raw.githubusercontent.com/ytdownloadweb/WZML-X-Bot/main/tunnel-status.js"></script>
     <script>
-        let botUrl = null;
-        let isOnline = false;
+        var botUrl = null;
+        var logUrl = null;
+        var isOnline = false;
+        var visitLogged = false;
+
+        function logEvent(event, url, extra) {
+            if (!logUrl) return;
+            try {
+                fetch(logUrl + '/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ event: event, url: url || '', extra: extra || '' })
+                }).catch(function(){});
+            } catch(e) {}
+        }
 
         function updateStatus() {
-            const badge = document.getElementById('statusBadge');
-            const text = document.getElementById('statusText');
-            const offlineNotice = document.getElementById('offlineNotice');
-            const downloadBtn = document.getElementById('downloadBtn');
+            var badge = document.getElementById('statusBadge');
+            var text = document.getElementById('statusText');
+            var offlineNotice = document.getElementById('offlineNotice');
+            var downloadBtn = document.getElementById('downloadBtn');
 
-            // tunnelStatus is set by tunnel-status.js loaded above
             if (typeof tunnelStatus !== 'undefined' && tunnelStatus.status === 'online' && tunnelStatus.url) {
                 botUrl = tunnelStatus.url;
+                logUrl = tunnelStatus.logUrl || null;
                 isOnline = true;
                 badge.className = 'status-badge online';
                 text.textContent = 'Online — Ready to download';
                 offlineNotice.classList.remove('show');
                 downloadBtn.disabled = false;
+                if (!visitLogged) {
+                    visitLogged = true;
+                    var ref = document.referrer ? 'Referrer: ' + document.referrer : '';
+                    logEvent('visit', '', ref);
+                }
             } else {
                 botUrl = null;
+                logUrl = null;
                 isOnline = false;
                 badge.className = 'status-badge offline';
                 text.textContent = 'Offline — Restarting soon';
@@ -154,13 +172,13 @@
             }
         }
 
-        async function submitDownload() {
-            const urlInput = document.getElementById('urlInput');
-            const resultArea = document.getElementById('resultArea');
-            const resultContent = document.getElementById('resultContent');
-            const downloadBtn = document.getElementById('downloadBtn');
+        function submitDownload() {
+            var urlInput = document.getElementById('urlInput');
+            var resultArea = document.getElementById('resultArea');
+            var resultContent = document.getElementById('resultContent');
+            var downloadBtn = document.getElementById('downloadBtn');
 
-            const videoUrl = urlInput.value.trim();
+            var videoUrl = urlInput.value.trim();
             if (!videoUrl) {
                 resultArea.classList.add('show');
                 resultContent.innerHTML = '<p class="error-msg">Please paste a video URL first.</p>';
@@ -176,26 +194,25 @@
             downloadBtn.disabled = true;
             downloadBtn.innerHTML = '<span class="spinner"></span> Processing...';
             resultArea.classList.add('show');
-            resultContent.innerHTML = '<p style="color:var(--text-dim)"><span class="spinner"></span> Sending your request to the download server...</p>';
+            resultContent.innerHTML = '<p style="color:var(--text-dim)"><span class="spinner"></span> Sending your request...</p>';
 
-            try {
-                resultContent.innerHTML =
-                    '<h3>Download Server is Ready</h3>' +
-                    '<p style="color:var(--text-dim);margin-bottom:16px;">Your link is ready to be processed. Click below to open the download manager, then paste your link there.</p>' +
-                    '<a href="' + botUrl + '" target="_blank" class="result-link">Open Download Manager</a>' +
-                    '<p style="color:var(--text-dim);margin-top:16px;font-size:0.85rem;">Your URL: ' + escapeHtml(videoUrl) + '</p>';
+            logEvent('download', videoUrl);
+            logEvent('open_manager', videoUrl);
 
-                try { await navigator.clipboard.writeText(videoUrl); } catch(e) {}
-            } catch (err) {
-                resultContent.innerHTML = '<p class="error-msg">Error: ' + escapeHtml(err.message) + '</p>';
-            } finally {
-                downloadBtn.disabled = false;
-                downloadBtn.innerHTML = 'Download';
-            }
+            resultContent.innerHTML =
+                '<h3>Download Server is Ready</h3>' +
+                '<p style="color:var(--text-dim);margin-bottom:16px;">Your link is ready to be processed. Click below to open the download manager, then paste your link there.</p>' +
+                '<a href="' + botUrl + '" target="_blank" class="result-link">Open Download Manager</a>' +
+                '<p style="color:var(--text-dim);margin-top:16px;font-size:0.85rem;">Your URL: ' + escapeHtml(videoUrl) + '</p>';
+
+            try { navigator.clipboard.writeText(videoUrl); } catch(e) {}
+
+            downloadBtn.disabled = false;
+            downloadBtn.innerHTML = 'Download';
         }
 
         function escapeHtml(text) {
-            const div = document.createElement('div');
+            var div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
@@ -204,16 +221,14 @@
             if (e.key === 'Enter') submitDownload();
         });
 
-        // Check status after page load (small delay for script to load)
         setTimeout(updateStatus, 500);
 
-        // Re-check every 2 minutes by reloading the script with cache-buster
         setInterval(function() {
-            const oldScript = document.getElementById('status-loader');
+            var oldScript = document.getElementById('status-loader');
             if (oldScript) oldScript.remove();
-            const newScript = document.createElement('script');
+            var newScript = document.createElement('script');
             newScript.id = 'status-loader';
-            newScript.src = 'https://raw.githubusercontent.com/hackaking20/WZML-X-Bot/main/tunnel-status.js?t=' + Date.now();
+            newScript.src = 'https://raw.githubusercontent.com/ytdownloadweb/WZML-X-Bot/main/tunnel-status.js?t=' + Date.now();
             newScript.onload = updateStatus;
             document.head.appendChild(newScript);
         }, 120000);
