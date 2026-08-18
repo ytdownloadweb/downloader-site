@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTDownload - Free Video Downloader</title>
+    <meta name="description" content="Download videos from YouTube, Instagram, TikTok, Facebook and more for free. Fast, simple, no signup required.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0f0f0f;
+            --card: #1a1a2e;
+            --accent: #7c3aed;
+            --accent-light: #a78bfa;
+            --green: #22c55e;
+            --red: #ef4444;
+            --orange: #f59e0b;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(124, 58, 237, 0.15), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.08), transparent 50%);
+            z-index: -1;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+
+        header { text-align: center; padding: 60px 20px 30px; }
+        header h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-light), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+        header p { color: var(--text-dim); margin-top: 10px; font-size: 1.1rem; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 20px auto;
+            transition: all 0.3s;
+        }
+        .status-badge.online {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .status-badge.checking {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--orange);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .status-badge.online .status-dot { background: var(--green); }
+        .status-badge.offline .status-dot { background: var(--red); }
+        .status-badge.checking .status-dot { background: var(--orange); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .downloader-card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 40px;
+            margin-top: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+
+        @media (min-width: 640px) {
+            .input-group { flex-direction: row; }
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 16px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .url-input:focus { border-color: var(--accent); }
+        .url-input::placeholder { color: var(--text-dim); }
+
+        .download-btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), #6d28d9);
+            color: white;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4); }
+        .download-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .result-area {
+            margin-top: 30px;
+            display: none;
+        }
+        .result-area.show { display: block; }
+
+        .result-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .result-card h3 { color: var(--green); margin-bottom: 12px; }
+
+        .result-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .result-link:hover { background: #6d28d9; }
+
+        .spinner {
+            display: inline-block;
+            width: 20px; height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-light);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg { color: var(--red); }
+
+        .platforms {
+            margin-top: 50px;
+            text-align: center;
+        }
+        .platforms h2 { font-size: 1.2rem; color: var(--text-dim); margin-bottom: 20px; }
+        .platform-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+        .platform-tag {
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 999px;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .how-it-works {
+            margin-top: 50px;
+            text-align: center;
+            padding: 30px 0;
+        }
+        .how-it-works h2 { font-size: 1.5rem; margin-bottom: 30px; }
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .step {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+        .step-num {
+            width: 40px; height: 40px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin: 0 auto 12px;
+        }
+        .step p { color: var(--text-dim); font-size: 0.95rem; }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 40px;
+        }
+        footer a { color: var(--accent-light); text-decoration: none; }
+
+        .offline-notice {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            color: var(--text-dim);
+        }
+        .offline-notice.show { display: block; }
+        .offline-notice strong { color: var(--red); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>YTDownload</h1>
+            <p>Download videos from YouTube, Instagram, TikTok & more — free, fast, no signup</p>
+            <div id="statusBadge" class="status-badge checking">
+                <span class="status-dot"></span>
+                <span id="statusText">Checking status...</span>
+            </div>
+        </header>
+
+        <div class="downloader-card">
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="urlInput"
+                    class="url-input"
+                    placeholder="Paste your video URL here (YouTube, Instagram, TikTok...)"
+                    autocomplete="off"
+                >
+                <button id="downloadBtn" class="download-btn" onclick="submitDownload()">Download</button>
+            </div>
+
+            <div id="offlineNotice" class="offline-notice">
+                <strong>Bot is currently offline.</strong><br>
+                The download server restarts periodically. It will be back online shortly.<br>
+                You can also use the bot directly on Telegram — send your link to the bot.
+            </div>
+
+            <div id="resultArea" class="result-area">
+                <div class="result-card">
+                    <div id="resultContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="platforms">
+            <h2>Supported Platforms</h2>
+            <div class="platform-list">
+                <span class="platform-tag">YouTube</span>
+                <span class="platform-tag">Instagram</span>
+                <span class="platform-tag">TikTok</span>
+                <span class="platform-tag">Facebook</span>
+                <span class="platform-tag">Twitter / X</span>
+                <span class="platform-tag">Reddit</span>
+                <span class="platform-tag">Vimeo</span>
+                <span class="platform-tag">Dailymotion</span>
+                <span class="platform-tag">SoundCloud</span>
+                <span class="platform-tag">Pinterest</span>
+                <span class="platform-tag">Streamable</span>
+                <span class="platform-tag">+ 1000 more</span>
+            </div>
+        </div>
+
+        <div class="how-it-works">
+            <h2>How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <p><strong>Paste</strong> the video URL from any supported platform</p>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <p><strong>Click</strong> Download and wait a few seconds</p>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <p><strong>Get</strong> your download link and save the file</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>YTDownload — Free Video Downloader | Powered by WZML-X Bot & yt-dlp</p>
+            <p style="margin-top:8px;">By using this service you agree that you are responsible for respecting copyright laws in your jurisdiction.</p>
+        </footer>
+    </div>
+
+    <script>
+        // === Configuration ===
+        // This file is updated automatically by the bot workflow when it starts.
+        // It tells the website where the bot is currently running.
+        const STATUS_URL = 'https://raw.githubusercontent.com/hackaking20/WZML-X-Bot/main/tunnel-status.json';
+
+        let botUrl = null;
+        let isOnline = false;
+
+        // === Check bot status ===
+        async function checkStatus() {
+            const badge = document.getElementById('statusBadge');
+            const text = document.getElementById('statusText');
+            const offlineNotice = document.getElementById('offlineNotice');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            badge.className = 'status-badge checking';
+            text.textContent = 'Checking status...';
+
+            try {
+                const resp = await fetch(STATUS_URL + '?t=' + Date.now());
+                if (!resp.ok) throw new Error('Status file not found');
+
+                const data = await resp.json();
+
+                if (data.status === 'online' && data.url) {
+                    botUrl = data.url;
+                    isOnline = true;
+                    badge.className = 'status-badge online';
+                    text.textContent = 'Online — Ready to download';
+                    offlineNotice.classList.remove('show');
+                    downloadBtn.disabled = false;
+                } else {
+                    botUrl = null;
+                    isOnline = false;
+                    badge.className = 'status-badge offline';
+                    text.textContent = 'Offline — Restarting soon';
+                    offlineNotice.classList.add('show');
+                    downloadBtn.disabled = true;
+                }
+            } catch (e) {
+                botUrl = null;
+                isOnline = false;
+                badge.className = 'status-badge offline';
+                text.textContent = 'Offline — Server unavailable';
+                offlineNotice.classList.add('show');
+                downloadBtn.disabled = true;
+            }
+        }
+
+        // === Submit download request ===
+        async function submitDownload() {
+            const urlInput = document.getElementById('urlInput');
+            const resultArea = document.getElementById('resultArea');
+            const resultContent = document.getElementById('resultContent');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            const videoUrl = urlInput.value.trim();
+            if (!videoUrl) {
+                resultArea.classList.add('show');
+                resultContent.innerHTML = '<p class="error-msg">Please paste a video URL first.</p>';
+                return;
+            }
+
+            if (!isOnline || !botUrl) {
+                resultArea.classList.add('show');
+                resultContent.innerHTML = '<p class="error-msg">The download server is currently offline. Please try again in a few minutes.</p>';
+                return;
+            }
+
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = '<span class="spinner"></span> Processing...';
+            resultArea.classList.add('show');
+            resultContent.innerHTML = '<p style="color:var(--text-dim)"><span class="spinner"></span> Sending your request to the download server...</p>';
+
+            try {
+                const webUiUrl = botUrl;
+
+                resultContent.innerHTML = `
+                    <h3>Download Server is Ready</h3>
+                    <p style="color:var(--text-dim);margin-bottom:16px;">Your link is ready to be processed. Click below to open the download manager, then paste your link there.</p>
+                    <a href="${webUiUrl}" target="_blank" class="result-link">Open Download Manager</a>
+                    <p style="color:var(--text-dim);margin-top:16px;font-size:0.85rem;">Your URL: ${escapeHtml(videoUrl)}</p>
+                `;
+
+                try {
+                    await navigator.clipboard.writeText(videoUrl);
+                } catch (e) {}
+
+            } catch (err) {
+                resultContent.innerHTML = `<p class="error-msg">Error: ${escapeHtml(err.message)}</p>`;
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = 'Download';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') submitDownload();
+        });
+
+        checkStatus();
+        setInterval(checkStatus, 120000);
+    </script>
+</body>
+</html>
