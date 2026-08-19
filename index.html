@@ -151,6 +151,8 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
   .bottom-nav{display:flex}
   .screen{padding-bottom:90px}
 }
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-close{position:absolute;top:12px;right:16px;font-size:22px;color:var(--muted);cursor:pointer;background:none;border:none}
 </style>
 </head>
 <body>
@@ -167,6 +169,7 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
       <button class="nav-btn desktop-only" data-screen="profile">Profile</button>
       <button class="nav-btn desktop-only" id="adminNavBtn" data-screen="admin" style="display:none">Admin</button>
       <button class="nav-btn danger" id="logoutTopBtn">Logout</button>
+      <button class="nav-btn accent" id="authBtn">Sign In</button>
     </div>
   </div>
 
@@ -178,9 +181,11 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
     <button class="b" id="adminBottomBtn" data-screen="admin" style="display:none"><span class="ic">🛡</span>Admin</button>
   </div>
 
-  <div class="screen active" id="loginScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px">
+  <div class="modal-overlay" id="loginModal" style="display:none">
+  <div class="screen" id="loginScreen" style="display:none;align-items:center;justify-content:center;min-height:100vh;padding:20px">
     <div class="auth-card">
       <div class="auth-logo"><div class="logo">⬇</div><span>YTDownload</span></div>
+      <button class="modal-close" id="modalClose">✕</button>
       <div class="auth-tag">Download videos to Google Drive — fast & easy</div>
       <div class="tabs">
         <button class="tab active" data-tab="signin">Sign In</button>
@@ -210,11 +215,15 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
       <div class="auth-foot">By signing in you agree to our terms. New accounts start on the Free tier.</div>
     </div>
   </div>
+  </div>
 
-  <div class="screen" id="downloaderScreen">
+  <div class="screen active" id="downloaderScreen">
     <div class="card">
       <h2>Download Video</h2>
       <div class="sub">Paste any video URL — we auto-detect the platform and download to Google Drive.</div>
+      <div class="guest-banner" id="guestBanner" style="margin-bottom:14px;padding:10px 14px;border-radius:10px;font-size:13px;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);color:var(--accent2)">
+        You're browsing as a guest. <b>Sign in for more downloads & history.</b>
+      </div>
       <div class="url-row">
         <input type="text" class="url-input" id="urlInput" placeholder="Paste YouTube, Instagram, TikTok, Facebook, Twitter URL…" />
         <button class="dl-btn" id="dlBtn">Download</button>
@@ -388,23 +397,53 @@ function showOffline(){
   document.getElementById("statusText").textContent = "Offline";
 }
 
-function checkAuth(){
-  if(!SERVER_URL){ setTimeout(checkAuth, 2000); return; }
+function tryAuth(){
+  if(!SERVER_URL){ setTimeout(tryAuth, 3000); return; }
   api("/api/auth/me","GET").then(function(d){
     if(d && d.username){
-      currentUser = d;
-      isAdmin = d.isAdmin;
-      showApp(d);
-    } else { showLogin(); }
-  }).catch(function(){ setTimeout(checkAuth, 3000); });
+      currentUser = d; isAdmin = d.isAdmin;
+      onLoggedIn(d);
+    } else { onGuest(); }
+  }).catch(function(){ onGuest(); });
 }
 
+function onGuest(){
+  currentUser = null; isAdmin = false;
+  document.getElementById("topbar").style.display = "flex";
+  if(window.innerWidth <= 680) document.getElementById("bottomNav").style.display = "flex";
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("authBtn").style.display = "";
+  document.getElementById("authBtn").textContent = "Sign In";
+  document.getElementById("logoutTopBtn").style.display = "none";
+  document.getElementById("tierBadge").style.display = "none";
+  document.getElementById("adminNavBtn").style.display = "none";
+  document.getElementById("adminBottomBtn").style.display = "none";
+  document.getElementById("guestBanner").style.display = "block";
+}
+function onLoggedIn(user){
+  currentUser = user;
+  document.getElementById("loginModal").style.display = "none";
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("topbar").style.display = "flex";
+  if(window.innerWidth <= 680) document.getElementById("bottomNav").style.display = "flex";
+  document.getElementById("authBtn").style.display = "none";
+  document.getElementById("logoutTopBtn").style.display = "";
+  var tb = document.getElementById("tierBadge");
+  tb.textContent = TIER_LABELS[user.tier] || user.tier;
+  tb.style.color = TIER_COLORS[user.tier] || "var(--muted)";
+  tb.style.display = "inline-flex";
+  if(user.isAdmin){
+    document.getElementById("adminNavBtn").style.display = "inline-block";
+    document.getElementById("adminBottomBtn").style.display = "flex";
+  }
+  document.getElementById("guestBanner").style.display = "none";
+  api("/log","POST",{event:"visit",user:user.username}).catch(function(){});
+  loadHistory(); loadPremium();
+  if(user.isAdmin) loadAdmin();
+}
 function showLogin(){
   document.getElementById("loginScreen").style.display = "flex";
-  document.getElementById("topbar").style.display = "none";
-  document.getElementById("bottomNav").style.display = "none";
-  document.querySelectorAll(".screen").forEach(function(s){ if(s.id !== "loginScreen") s.classList.remove("active"); });
-  document.getElementById("loginScreen").classList.add("active");
+  document.getElementById("loginModal").style.display = "flex";
 }
 
 function showApp(user){
@@ -430,7 +469,7 @@ function showApp(user){
 function logout(){
   api("/api/auth","POST",{action:"logout"}).then(function(){
     currentUser = null; isAdmin = false;
-    showLogin();
+    onGuest();
     toast("Logged out","success");
   }).catch(function(){ toast("Network error","error"); });
 }
@@ -475,6 +514,9 @@ function startDownload(){
   var url = document.getElementById("urlInput").value.trim();
   if(!url || url.length < 10){ toast("Enter a valid URL","error"); return; }
   if(!SERVER_URL){ toast("Server is offline. Please wait.","error"); return; }
+  if(!currentUser){
+    toast("Guest mode - limited to 3 downloads/day. Sign in for more!","warn");
+  }
   var platform = detectPlatform(url);
   var hint = document.getElementById("platformHint");
   hint.style.display = "flex";
@@ -687,7 +729,7 @@ document.addEventListener("DOMContentLoaded", function(){
     api("/api/auth","POST",{action:"signin",username:u,password:p}).then(function(d){
       document.getElementById("signinBtn").disabled = false;
       document.getElementById("signinBtn").textContent = "Sign In";
-      if(d.success){ toast("Welcome back, " + d.username + "!","success"); checkAuth(); }
+      if(d.success){ toast("Welcome back, " + d.username + "!","success"); tryAuth(); }
       else document.getElementById("signinError").textContent = d.error || "Login failed";
     }).catch(function(){
       document.getElementById("signinBtn").disabled = false;
@@ -707,7 +749,7 @@ document.addEventListener("DOMContentLoaded", function(){
     api("/api/auth","POST",{action:"register",username:u,password:p}).then(function(d){
       document.getElementById("regBtn").disabled = false;
       document.getElementById("regBtn").textContent = "Create Account";
-      if(d.success){ toast("Account created! Welcome " + d.username,"success"); checkAuth(); }
+      if(d.success){ toast("Account created! Welcome " + d.username,"success"); tryAuth(); }
       else document.getElementById("regError").textContent = d.error || "Registration failed";
     }).catch(function(){
       document.getElementById("regBtn").disabled = false;
@@ -723,7 +765,7 @@ document.addEventListener("DOMContentLoaded", function(){
     document.getElementById("adminLoginBtn").disabled = true;
     api("/api/auth","POST",{action:"admin_login",username:au,password:p}).then(function(d){
       document.getElementById("adminLoginBtn").disabled = false;
-      if(d.success){ toast("Admin logged in","success"); checkAuth(); }
+      if(d.success){ toast("Admin logged in","success"); tryAuth(); }
       else toast(d.error || "Admin login failed","error");
     }).catch(function(){
       document.getElementById("adminLoginBtn").disabled = false;
@@ -752,9 +794,13 @@ document.addEventListener("DOMContentLoaded", function(){
   });
   document.getElementById("logoutTopBtn").addEventListener("click", logout);
   document.getElementById("logoutBtn").addEventListener("click", logout);
+  document.getElementById("authBtn").addEventListener("click", showLogin);
+  document.getElementById("modalClose").addEventListener("click", function(){ document.getElementById("loginModal").style.display="none"; document.getElementById("loginScreen").style.display="none"; });
+  document.getElementById("loginModal").addEventListener("click", function(e){ if(e.target===this){ this.style.display="none"; document.getElementById("loginScreen").style.display="none"; } });
   loadServerStatus();
   statusTimer = setInterval(loadServerStatus, 120000);
-  checkAuth();
+  onGuest();
+  tryAuth();
 });
 
 window.changeTier = changeTier;
