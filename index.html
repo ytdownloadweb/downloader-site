@@ -182,14 +182,14 @@
             } catch(e) {}
         }
 
-        function updateStatus() {
+        function updateStatus(status) {
             var badge = document.getElementById('statusBadge');
             var text = document.getElementById('statusText');
             var offlineNotice = document.getElementById('offlineNotice');
             var downloadBtn = document.getElementById('downloadBtn');
-            if (typeof tunnelStatus !== 'undefined' && tunnelStatus.status === 'online' && tunnelStatus.url) {
-                botUrl = tunnelStatus.url;
-                logUrl = tunnelStatus.logUrl || null;
+            if (status && status.status === 'online' && status.url) {
+                botUrl = status.url;
+                logUrl = status.logUrl || null;
                 isOnline = true;
                 badge.className = 'status-badge online';
                 text.textContent = 'Online \u2014 Ready to download';
@@ -209,6 +209,14 @@
                 offlineNotice.classList.add('show');
                 downloadBtn.disabled = true;
             }
+        }
+
+        function handleStatusError() {
+            var badge = document.getElementById('statusBadge');
+            badge.className = 'status-badge offline';
+            document.getElementById('statusText').textContent = 'Offline \u2014 Restarting soon';
+            document.getElementById('offlineNotice').classList.add('show');
+            document.getElementById('downloadBtn').disabled = true;
         }
 
         function submitDownload() {
@@ -256,21 +264,40 @@
             if (e.key === 'Enter') submitDownload();
         });
 
+        // === Fetch tunnel status via fetch() (NOT script tag) ===
+        // raw.githubusercontent.com serves .js as text/plain with nosniff,
+        // so <script> tags are blocked by the browser. fetch() works because
+        // raw.githubusercontent.com sends Access-Control-Allow-Origin: *.
         function loadTunnelStatus() {
-            var oldScript = document.getElementById('status-loader');
-            if (oldScript) oldScript.remove();
-            var s = document.createElement('script');
-            s.id = 'status-loader';
-            s.src = 'https://raw.githubusercontent.com/ytdownloadweb/WZML-X-Bot/main/tunnel-status.js?t=' + Date.now();
-            s.onload = updateStatus;
-            s.onerror = function() {
-                var badge = document.getElementById('statusBadge');
-                badge.className = 'status-badge offline';
-                document.getElementById('statusText').textContent = 'Offline \u2014 Status check failed';
-                document.getElementById('offlineNotice').classList.add('show');
-                document.getElementById('downloadBtn').disabled = true;
-            };
-            document.head.appendChild(s);
+            var url = 'https://raw.githubusercontent.com/ytdownloadweb/WZML-X-Bot/main/tunnel-status.js?t=' + Date.now();
+            fetch(url)
+                .then(function(resp) {
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    return resp.text();
+                })
+                .then(function(text) {
+                    // Parse "window.tunnelStatus = {...};" to extract the JSON object
+                    var match = text.match(/window\.tunnelStatus\s*=\s*(\{[\s\S]*?\})\s*;?\s*$/);
+                    if (match) {
+                        var status = JSON.parse(match[1]);
+                        updateStatus(status);
+                    } else {
+                        try {
+                            eval(text);
+                            if (typeof tunnelStatus !== 'undefined') {
+                                updateStatus(tunnelStatus);
+                            } else {
+                                handleStatusError();
+                            }
+                        } catch(e) {
+                            handleStatusError();
+                        }
+                    }
+                })
+                .catch(function(err) {
+                    console.log('Status fetch failed:', err);
+                    handleStatusError();
+                });
         }
 
         loadTunnelStatus();
