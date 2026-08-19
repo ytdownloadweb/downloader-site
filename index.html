@@ -203,6 +203,7 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
         <span class="admin-login-toggle" id="adminToggle">Admin Login</span>
       </div>
       <div id="adminLoginForm" style="display:none;margin-top:12px">
+        <div class="field"><label>Admin Username</label><input type="text" id="adminUser" placeholder="Admin username"></div>
         <div class="field"><label>Admin Password</label><input type="password" id="adminPass" placeholder="Admin password"></div>
         <button type="button" class="btn-primary" id="adminLoginBtn" style="background:linear-gradient(135deg,#dc2626,#991b1b)">Admin Login</button>
       </div>
@@ -715,9 +716,12 @@ document.addEventListener("DOMContentLoaded", function(){
     });
   });
   document.getElementById("adminLoginBtn").addEventListener("click", function(){
+    var au = document.getElementById("adminUser").value.trim();
     var p = document.getElementById("adminPass").value;
+    if(!au){ toast("Enter admin username","error"); return; }
+    if(!p){ toast("Enter admin password","error"); return; }
     document.getElementById("adminLoginBtn").disabled = true;
-    api("/api/auth","POST",{action:"admin_login",password:p}).then(function(d){
+    api("/api/auth","POST",{action:"admin_login",username:au,password:p}).then(function(d){
       document.getElementById("adminLoginBtn").disabled = false;
       if(d.success){ toast("Admin logged in","success"); checkAuth(); }
       else toast(d.error || "Admin login failed","error");
