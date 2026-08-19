@@ -1,360 +1,761 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YTDownload - Free Video Downloader</title>
-    <meta name="description" content="Download videos from YouTube, Instagram, TikTok, Facebook and more. Paste link, auto-detect platform, download to Google Drive.">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #0f0f0f; --card: #1a1a2e; --accent: #7c3aed; --accent-light: #a78bfa;
-            --green: #22c55e; --red: #ef4444; --orange: #f59e0b; --text: #f8fafc; --text-dim: #94a3b8;
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-        body::before { content: ''; position: fixed; top:0; left:0; right:0; bottom:0; background: radial-gradient(circle at 20% 50%, rgba(124,58,237,0.15), transparent 50%), radial-gradient(circle at 80% 80%, rgba(34,197,94,0.08), transparent 50%); z-index: -1; }
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; padding: 50px 20px 20px; }
-        header h1 { font-size: 2.6rem; font-weight: 800; background: linear-gradient(135deg, var(--accent-light), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; }
-        header p { color: var(--text-dim); margin-top: 8px; font-size: 1.05rem; }
-        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; margin: 16px auto; transition: all 0.3s; }
-        .status-badge.online { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
-        .status-badge.offline { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
-        .status-badge.checking { background: rgba(245,158,11,0.15); color: var(--orange); border: 1px solid rgba(245,158,11,0.3); }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
-        .status-badge.online .status-dot { background: var(--green); }
-        .status-badge.offline .status-dot { background: var(--red); }
-        .status-badge.checking .status-dot { background: var(--orange); }
-        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-        .downloader-card { background: var(--card); border-radius: 20px; padding: 36px; margin-top: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); }
-        .input-group { display: flex; gap: 10px; flex-direction: column; }
-        @media (min-width: 640px) { .input-group { flex-direction: row; } }
-        .url-input { flex: 1; padding: 16px 20px; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(0,0,0,0.3); color: var(--text); font-size: 1rem; outline: none; transition: border-color 0.3s; }
-        .url-input:focus { border-color: var(--accent); }
-        .url-input::placeholder { color: var(--text-dim); }
-        .download-btn { padding: 16px 32px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #6d28d9); color: white; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-        .download-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,58,237,0.4); }
-        .download-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .platform-detect { margin-top: 14px; display: none; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; }
-        .platform-detect.show { display: flex; }
-        .platform-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: white; }
-        .platform-name { color: var(--green); font-weight: 600; font-size: 0.9rem; }
-        .progress-area { margin-top: 24px; display: none; }
-        .progress-area.show { display: block; }
-        .progress-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.05); }
-        .progress-bar-outer { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin: 12px 0; }
-        .progress-bar-inner { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 4px; transition: width 0.5s ease; width: 0%; }
-        .progress-status { color: var(--text-dim); font-size: 0.95rem; text-align: center; }
-        .progress-status.error { color: var(--red); }
-        .progress-status.done { color: var(--green); }
-        .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .result-area { margin-top: 20px; display: none; }
-        .result-area.show { display: block; }
-        .result-card { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 12px; padding: 24px; text-align: center; }
-        .result-card h3 { color: var(--green); margin-bottom: 12px; font-size: 1.2rem; }
-        .result-card .file-info { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 16px; }
-        .result-link { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, var(--green), #16a34a); color: white; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 1.05rem; transition: all 0.2s; }
-        .result-link:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,197,94,0.4); }
-        .result-note { color: var(--text-dim); font-size: 0.85rem; margin-top: 12px; }
-        .offline-notice { display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; padding: 20px; margin-top: 20px; text-align: center; color: var(--text-dim); }
-        .offline-notice.show { display: block; }
-        .offline-notice strong { color: var(--red); }
-        .gdrive-info { margin-top: 20px; padding: 14px; background: rgba(15,157,88,0.08); border: 1px solid rgba(15,157,88,0.15); border-radius: 12px; text-align: center; }
-        .gdrive-info p { color: var(--text-dim); font-size: 0.88rem; }
-        .premium-section { margin-top: 40px; background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(34,197,94,0.1)); border: 1px solid rgba(124,58,237,0.3); border-radius: 20px; padding: 36px; text-align: center; }
-        .premium-section h2 { font-size: 1.5rem; margin-bottom: 10px; background: linear-gradient(135deg, var(--accent-light), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .premium-section p { color: var(--text-dim); font-size: 1rem; margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
-        .premium-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        .premium-badge { padding: 6px 16px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); border-radius: 999px; font-size: 0.85rem; color: var(--green); }
-        .premium-btn { display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #0088cc, #005580); color: white; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 1.05rem; transition: all 0.2s; }
-        .premium-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,136,204,0.4); }
-        .premium-note { color: var(--text-dim); font-size: 0.82rem; margin-top: 12px; }
-        footer { text-align: center; padding: 30px 20px; color: var(--text-dim); font-size: 0.82rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 30px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YTDownload — Video Downloader</title>
+<style>
+:root{--bg:#0f0f0f;--card:#1a1a2e;--card2:#16213e;--accent:#7c3aed;--accent2:#9d6dff;--success:#22c55e;--danger:#ef4444;--warn:#f59e0b;--text:#e5e7eb;--muted:#9ca3af;--border:rgba(255,255,255,0.08);--t-free:#64748b;--t-bronze:#cd7f32;--t-silver:#c0c0c0;--t-gold:#ffd700;--t-supreme:#ff00ff}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--accent2);text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input{font-family:inherit}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px}
+
+#app{min-height:100vh;display:flex;flex-direction:column}
+
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:rgba(15,15,15,0.75);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#4c1d95);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 14px rgba(124,58,237,0.4)}
+.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.status-badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--muted)}
+.status-dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.status-badge.online .status-dot{background:var(--success);animation:pulse 2s infinite}
+.status-badge.offline .status-dot{background:var(--danger)}
+.status-badge.online{color:var(--success);border-color:rgba(34,197,94,0.3)}
+.status-badge.offline{color:var(--danger);border-color:rgba(239,68,68,0.3)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,0.6)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+.tier-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:5px 11px;border-radius:999px;border:1px solid currentColor}
+.nav-btn{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;transition:all .15s}
+.nav-btn:hover{background:rgba(255,255,255,0.1);border-color:var(--accent)}
+.nav-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.nav-btn.danger{color:#fca5a5}
+.nav-btn.danger:hover{background:rgba(239,68,68,0.15);border-color:var(--danger)}
+
+.screen{display:none;animation:fade .3s ease;padding:18px 16px 60px;max-width:1100px;margin:0 auto;width:100%}
+.screen.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px}
+.card+.card{margin-top:16px}
+.card h2{font-size:19px;margin-bottom:6px}
+.card .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.auth-card{width:100%;max-width:400px;background:rgba(26,26,46,0.7);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:20px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.auth-logo{display:flex;align-items:center;justify-content:center;gap:10px;font-size:22px;font-weight:800;margin-bottom:6px}
+.auth-logo .logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#4c1d95);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 20px rgba(124,58,237,0.5)}
+.auth-tag{text-align:center;color:var(--muted);font-size:13px;margin-bottom:22px}
+.tabs{display:flex;background:rgba(0,0,0,0.3);border-radius:11px;padding:4px;margin-bottom:20px}
+.tab{flex:1;padding:10px;border-radius:8px;font-size:14px;font-weight:600;background:transparent;color:var(--muted);transition:all .2s}
+.tab.active{background:var(--accent);color:#fff}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.field input{width:100%;padding:12px 14px;border-radius:10px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-size:14px;transition:border .15s}
+.field input:focus{border-color:var(--accent)}
+.inline-error{color:var(--danger);font-size:12px;margin-top:6px;min-height:16px}
+.btn-primary{width:100%;padding:13px;border-radius:10px;font-size:15px;font-weight:700;background:linear-gradient(135deg,var(--accent),#6d28d9);color:#fff;transition:transform .1s,opacity .15s;margin-top:6px}
+.btn-primary:hover{opacity:.92}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.auth-foot{text-align:center;margin-top:16px;font-size:12px;color:var(--muted)}
+
+.url-row{display:flex;gap:10px;flex-wrap:wrap}
+.url-input{flex:1;min-width:220px;padding:13px 15px;border-radius:11px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-size:14px}
+.url-input:focus{border-color:var(--accent)}
+.dl-btn{padding:13px 24px;border-radius:11px;font-weight:700;font-size:14px;background:linear-gradient(135deg,var(--accent),#6d28d9);color:#fff;transition:transform .1s,opacity .15s}
+.dl-btn:hover{opacity:.92}
+.dl-btn:active{transform:scale(.98)}
+.dl-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.platform-hint{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--muted)}
+.platform-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(124,58,237,0.15);color:var(--accent2);border:1px solid rgba(124,58,237,0.3)}
+
+.progress-wrap{margin-top:18px}
+.progress-track{height:10px;background:rgba(0,0,0,0.4);border-radius:6px;overflow:hidden}
+.progress-fill{height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--success));transition:width .4s ease}
+.progress-label{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:var(--muted)}
+.progress-stage{font-weight:600;color:var(--text)}
+
+.result{margin-top:16px;padding:16px;border-radius:12px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.result .check{width:40px;height:40px;border-radius:50%;flex:none;background:var(--success);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
+.result .info{flex:1;min-width:160px}
+.result .info .name{font-weight:600}
+.result .info .meta{font-size:12px;color:var(--muted)}
+.gdrive-link{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:9px;font-weight:700;font-size:13px;background:var(--success);color:#fff;transition:opacity .15s}
+.gdrive-link:hover{opacity:.9}
+
+.tier-warn{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:13px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);color:#fbbf24}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+tbody tr:hover{background:rgba(255,255,255,0.03)}
+
+.tier-table{margin-top:6px;overflow-x:auto}
+.tier-table table{min-width:560px}
+
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+.stat-box{background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:12px;padding:14px}
+.stat-box .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.stat-box .value{font-size:20px;font-weight:700;margin-top:4px}
+
+.admin-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.tier-select{padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--text);font-size:12px}
+.ban-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)}
+.ban-btn.unban{background:rgba(34,197,94,0.15);color:#86efac;border-color:rgba(34,197,94,0.3)}
+
+.activity-log{max-height:340px;overflow-y:auto;font-size:12px}
+.activity-log .row{padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px}
+.activity-log .row .when{color:var(--muted);flex:none}
+
+.tier-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:14px}
+.tier-card{background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;transition:transform .15s,border-color .15s}
+.tier-card:hover{transform:translateY(-3px)}
+.tier-card .tname{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.tier-card .tprice{font-size:26px;font-weight:800;margin:8px 0}
+.tier-card ul{list-style:none;font-size:13px;color:var(--muted)}
+.tier-card ul li{padding:4px 0}
+.tier-card ul li::before{content:"✓ ";color:var(--success);font-weight:700}
+.tier-card.current{border-width:2px}
+
+.upgrade-cta{margin-top:20px;text-align:center;padding:20px;border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(255,0,255,0.08));border:1px solid rgba(124,58,237,0.35)}
+.upgrade-cta a{display:inline-block;margin-top:12px;padding:12px 26px;border-radius:10px;font-weight:700;background:var(--accent);color:#fff}
+
+#toasts{position:fixed;bottom:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:10px;max-width:90vw}
+.toast{background:var(--card2);border:1px solid var(--border);border-left:4px solid var(--accent);padding:13px 16px;border-radius:10px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,0.4);animation:slideIn .25s ease;max-width:360px}
+.toast.success{border-left-color:var(--success)}
+.toast.error{border-left-color:var(--danger)}
+.toast.warn{border-left-color:var(--warn)}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+
+.empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px}
+.muted{color:var(--muted)}
+
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;display:none;background:rgba(15,15,15,0.92);backdrop-filter:blur(12px);border-top:1px solid var(--border);padding:8px}
+.bottom-nav .b{flex:1;background:transparent;color:var(--muted);font-size:11px;font-weight:600;padding:8px 4px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bottom-nav .b.active{color:var(--accent2)}
+.bottom-nav .b .ic{font-size:18px}
+
+.admin-login-note{text-align:center;font-size:12px;color:var(--muted);margin-top:14px}
+.admin-login-toggle{color:var(--accent2);cursor:pointer;text-decoration:underline;font-size:12px}
+
+@media(max-width:680px){
+  .topbar .nav-btn.desktop-only{display:none}
+  .bottom-nav{display:flex}
+  .screen{padding-bottom:90px}
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>YTDownload</h1>
-            <p>Paste any video link — we auto-detect, download, and mirror to Google Drive</p>
-            <div id="statusBadge" class="status-badge checking">
-                <span class="status-dot"></span>
-                <span id="statusText">Checking status...</span>
-            </div>
-        </header>
+<div id="app">
 
-        <div class="downloader-card">
-            <div class="input-group">
-                <input type="text" id="urlInput" class="url-input" placeholder="Paste any link — YouTube, Instagram, TikTok, Facebook..." autocomplete="off" oninput="detectPlatform()">
-                <button id="downloadBtn" class="download-btn" onclick="startDownload()" disabled>Download</button>
-            </div>
-
-            <div id="platformDetect" class="platform-detect">
-                <div id="platformIcon" class="platform-icon">YT</div>
-                <span id="platformName" class="platform-name">YouTube detected</span>
-            </div>
-
-            <div id="offlineNotice" class="offline-notice">
-                <strong>Server is currently offline.</strong><br>
-                The download server restarts periodically and will be back online shortly.
-            </div>
-
-            <div id="progressArea" class="progress-area">
-                <div class="progress-card">
-                    <div id="progressStatus" class="progress-status"><span class="spinner"></span>Starting...</div>
-                    <div class="progress-bar-outer"><div id="progressBar" class="progress-bar-inner"></div></div>
-                </div>
-            </div>
-
-            <div id="resultArea" class="result-area">
-                <div class="result-card">
-                    <h3>&#10003; Download Complete!</h3>
-                    <div id="fileInfo" class="file-info"></div>
-                    <a id="gdriveLink" href="#" target="_blank" class="result-link">Open in Google Drive</a>
-                    <p class="result-note">File is shared publicly — you can download it directly from Google Drive.</p>
-                </div>
-            </div>
-
-            <div class="gdrive-info">
-                <p>All downloads are mirrored to our shared Google Drive folder. Files are available immediately after processing — no waiting, no ads.</p>
-            </div>
-        </div>
-
-        <div class="premium-section">
-            <h2>Want Faster Speeds & Unlimited Bandwidth?</h2>
-            <p>The website is free but has scheduled downtime and shared bandwidth. Get the <strong style="color:var(--text);">premium Telegram bot version</strong> for fastest downloads, unlimited bandwidth, priority processing, and 24/7 availability.</p>
-            <div class="premium-badges">
-                <span class="premium-badge">Fastest Speeds</span>
-                <span class="premium-badge">Unlimited Bandwidth</span>
-                <span class="premium-badge">24/7 Uptime</span>
-                <span class="premium-badge">Priority Queue</span>
-                <span class="premium-badge">No Ads</span>
-            </div>
-            <a href="https://t.me/DJ_Hackrr" target="_blank" class="premium-btn">Contact on Telegram: @DJ_Hackrr</a>
-            <p class="premium-note">Paid service — DM for pricing and plans</p>
-        </div>
-
-        <footer>
-            <p>YTDownload — Free Video Downloader | Powered by yt-dlp + Google Drive</p>
-            <p style="margin-top:6px;">By using this service you agree that you are responsible for respecting copyright laws in your jurisdiction.</p>
-        </footer>
+  <div class="topbar" id="topbar" style="display:none">
+    <div class="brand"><div class="logo">▶</div><span>YTDownload</span></div>
+    <div class="nav-right">
+      <div class="status-badge" id="statusBadge"><span class="status-dot"></span><span id="statusText">Checking…</span></div>
+      <span class="tier-badge" id="tierBadge" style="display:none"></span>
+      <button class="nav-btn desktop-only active" data-screen="downloader">Download</button>
+      <button class="nav-btn desktop-only" data-screen="history">History</button>
+      <button class="nav-btn desktop-only" data-screen="premium">Premium</button>
+      <button class="nav-btn desktop-only" data-screen="profile">Profile</button>
+      <button class="nav-btn desktop-only" id="adminNavBtn" data-screen="admin" style="display:none">Admin</button>
+      <button class="nav-btn danger" id="logoutTopBtn">Logout</button>
     </div>
+  </div>
 
-    <script>
-        var platforms = [
-            { match: ['youtube.com', 'youtu.be', 'm.youtube.com'], name: 'YouTube', icon: 'YT', color: '#ff0000' },
-            { match: ['instagram.com', 'instagr.am'], name: 'Instagram', icon: 'IG', color: '#e1306c' },
-            { match: ['tiktok.com'], name: 'TikTok', icon: 'TT', color: '#000000' },
-            { match: ['facebook.com', 'fb.watch', 'm.facebook.com'], name: 'Facebook', icon: 'FB', color: '#1877f2' },
-            { match: ['twitter.com', 'x.com', 't.co'], name: 'Twitter / X', icon: 'X', color: '#1da1f2' },
-            { match: ['reddit.com', 'redd.it'], name: 'Reddit', icon: 'RD', color: '#ff4500' },
-            { match: ['vimeo.com'], name: 'Vimeo', icon: 'VM', color: '#1ab7ea' },
-            { match: ['dailymotion.com', 'dai.ly'], name: 'Dailymotion', icon: 'DM', color: '#0066dc' },
-            { match: ['soundcloud.com'], name: 'SoundCloud', icon: 'SC', color: '#ff5500' },
-            { match: ['pinterest.com', 'pin.it'], name: 'Pinterest', icon: 'PN', color: '#bd081c' },
-            { match: ['streamable.com'], name: 'Streamable', icon: 'ST', color: '#0f90fa' },
-            { match: ['twitch.tv'], name: 'Twitch', icon: 'TW', color: '#9146ff' },
-        ];
+  <div class="bottom-nav" id="bottomNav" style="display:none">
+    <button class="b active" data-screen="downloader"><span class="ic">⬇</span>Download</button>
+    <button class="b" data-screen="history"><span class="ic">🕘</span>History</button>
+    <button class="b" data-screen="premium"><span class="ic">★</span>Premium</button>
+    <button class="b" data-screen="profile"><span class="ic">👤</span>Profile</button>
+    <button class="b" id="adminBottomBtn" data-screen="admin" style="display:none"><span class="ic">🛡</span>Admin</button>
+  </div>
 
-        function detectPlatform() {
-            var url = document.getElementById('urlInput').value.trim().toLowerCase();
-            var el = document.getElementById('platformDetect');
-            var icon = document.getElementById('platformIcon');
-            var name = document.getElementById('platformName');
-            for (var i = 0; i < platforms.length; i++) {
-                for (var j = 0; j < platforms[i].match.length; j++) {
-                    if (url.indexOf(platforms[i].match[j]) !== -1) {
-                        icon.textContent = platforms[i].icon;
-                        icon.style.background = platforms[i].color;
-                        name.textContent = platforms[i].name + ' detected';
-                        el.classList.add('show');
-                        return platforms[i].name;
-                    }
-                }
+  <div class="screen active" id="loginScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px">
+    <div class="auth-card">
+      <div class="auth-logo"><div class="logo">▶</div><span>YTDownload</span></div>
+      <div class="auth-tag">Download videos to Google Drive — fast & easy</div>
+      <div class="tabs">
+        <button class="tab active" data-tab="signin">Sign In</button>
+        <button class="tab" data-tab="register">Register</button>
+      </div>
+      <form id="signinForm" autocomplete="off">
+        <div class="field"><label>Username</label><input type="text" id="signinUser" placeholder="Enter username" autocomplete="username"></div>
+        <div class="field"><label>Password</label><input type="password" id="signinPass" placeholder="Enter password" autocomplete="current-password"></div>
+        <div class="inline-error" id="signinError"></div>
+        <button type="submit" class="btn-primary" id="signinBtn">Sign In</button>
+      </form>
+      <form id="registerForm" autocomplete="off" style="display:none">
+        <div class="field"><label>Username</label><input type="text" id="regUser" placeholder="Choose a username" autocomplete="username"></div>
+        <div class="field"><label>Password</label><input type="password" id="regPass" placeholder="Choose a password" autocomplete="new-password"></div>
+        <div class="field"><label>Confirm Password</label><input type="password" id="regPass2" placeholder="Confirm password" autocomplete="new-password"></div>
+        <div class="inline-error" id="regError"></div>
+        <button type="submit" class="btn-primary" id="regBtn">Create Account</button>
+      </form>
+      <div class="admin-login-note">
+        <span class="admin-login-toggle" id="adminToggle">Admin Login</span>
+      </div>
+      <div id="adminLoginForm" style="display:none;margin-top:12px">
+        <div class="field"><label>Admin Password</label><input type="password" id="adminPass" placeholder="Admin password"></div>
+        <button type="button" class="btn-primary" id="adminLoginBtn" style="background:linear-gradient(135deg,#dc2626,#991b1b)">Admin Login</button>
+      </div>
+      <div class="auth-foot">By signing in you agree to our terms. New accounts start on the Free tier.</div>
+    </div>
+  </div>
+
+  <div class="screen" id="downloaderScreen">
+    <div class="card">
+      <h2>Download Video</h2>
+      <div class="sub">Paste any video URL — we auto-detect the platform and download to Google Drive.</div>
+      <div class="url-row">
+        <input type="text" class="url-input" id="urlInput" placeholder="Paste YouTube, Instagram, TikTok, Facebook, Twitter URL…" />
+        <button class="dl-btn" id="dlBtn">Download</button>
+      </div>
+      <div class="platform-hint" id="platformHint" style="display:none"></div>
+      <div class="tier-warn" id="tierWarn" style="display:none"></div>
+      <div class="progress-wrap" id="progressWrap" style="display:none">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label"><span class="progress-stage" id="progressStage">Starting…</span><span id="progressPct">0%</span></div>
+      </div>
+      <div class="result" id="resultCard" style="display:none">
+        <div class="check">✓</div>
+        <div class="info"><div class="name" id="resultName"></div><div class="meta" id="resultMeta"></div></div>
+        <a href="#" class="gdrive-link" id="resultLink" target="_blank">Open in Google Drive ↗</a>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Supported Platforms</h2>
+      <div class="sub">Auto-detected from your URL — no manual selection needed.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+        <span class="platform-tag">YouTube</span><span class="platform-tag">Instagram</span><span class="platform-tag">TikTok</span><span class="platform-tag">Facebook</span><span class="platform-tag">Twitter/X</span><span class="platform-tag">Reddit</span><span class="platform-tag">Vimeo</span><span class="platform-tag">Dailymotion</span><span class="platform-tag">SoundCloud</span><span class="platform-tag">Pinterest</span><span class="platform-tag">Streamable</span><span class="platform-tag">Twitch</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>How It Works</h2>
+      <div class="sub">Three simple steps — no redirects, everything happens right here.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:10px">
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">📋</div><div style="font-weight:600;margin-bottom:4px">1. Paste URL</div><div style="font-size:13px;color:var(--muted)">Copy any video link and paste it in the box above.</div></div>
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">⚡</div><div style="font-weight:600;margin-bottom:4px">2. Download</div><div style="font-size:13px;color:var(--muted)">We fetch the video and upload it to Google Drive.</div></div>
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">📁</div><div style="font-weight:600;margin-bottom:4px">3. Get Link</div><div style="font-size:13px;color:var(--muted)">Download or stream directly from your Google Drive link.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="historyScreen">
+    <div class="card">
+      <h2>Download History</h2>
+      <div class="sub">Your last 50 downloads.</div>
+      <div id="historyList"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="screen" id="profileScreen">
+    <div class="card">
+      <h2>Account Profile</h2>
+      <div class="sub">Your account details and current tier.</div>
+      <div class="profile-grid" id="profileGrid"><div class="empty">Loading…</div></div>
+      <div style="margin-top:20px">
+        <button class="nav-btn danger" id="logoutBtn" style="width:100%;padding:12px">Logout</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Tier Comparison</h2>
+      <div class="sub">Compare all tiers and upgrade for more.</div>
+      <div class="tier-table">
+        <table>
+          <thead><tr><th>Tier</th><th>Max File Size</th><th>Daily Downloads</th><th>Bot Access</th></tr></thead>
+          <tbody>
+            <tr style="color:var(--t-free)"><td>Free</td><td>1 GB</td><td>3</td><td>—</td></tr>
+            <tr style="color:var(--t-bronze)"><td>Bronze</td><td>2 GB</td><td>10</td><td>—</td></tr>
+            <tr style="color:var(--t-silver)"><td>Silver</td><td>5 GB</td><td>25</td><td>—</td></tr>
+            <tr style="color:var(--t-gold)"><td>Gold</td><td>10 GB</td><td>50</td><td>—</td></tr>
+            <tr style="color:var(--t-supreme)"><td>Supreme</td><td>Unlimited</td><td>Unlimited</td><td>✓ Included</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="upgrade-cta">
+        <div style="font-size:16px;font-weight:700">Want more? Upgrade your tier!</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px">Contact us on Telegram to switch to a higher tier.</div>
+        <a href="https://t.me/DJ_Hackrr" target="_blank">Contact @DJ_Hackrr on Telegram</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="premiumScreen">
+    <div class="card" style="background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(255,0,255,0.05));border-color:rgba(124,58,237,0.3)">
+      <h2>Premium Tiers</h2>
+      <div class="sub">Unlock higher limits, faster downloads, and exclusive features.</div>
+      <div class="tier-cards" id="tierCards"></div>
+    </div>
+    <div class="card">
+      <h2>Why Upgrade?</h2>
+      <div class="sub">Premium members get priority processing and larger file limits.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:10px">
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">🚀</div><div style="font-weight:600;margin-bottom:4px">Larger Files</div><div style="font-size:13px;color:var(--muted)">Download files up to 10GB or unlimited on Supreme.</div></div>
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">♾️</div><div style="font-weight:600;margin-bottom:4px">More Daily</div><div style="font-size:13px;color:var(--muted)">From 3/day on Free to unlimited on Supreme.</div></div>
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">🤖</div><div style="font-weight:600;margin-bottom:4px">Bot Access</div><div style="font-size:13px;color:var(--muted)">Supreme members get premium Telegram bot access included.</div></div>
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">⚡</div><div style="font-weight:600;margin-bottom:4px">Priority</div><div style="font-size:13px;color:var(--muted)">Higher tiers get priority download processing.</div></div>
+      </div>
+      <div class="upgrade-cta">
+        <div style="font-size:16px;font-weight:700">Ready to upgrade?</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px">Message us on Telegram and we'll set you up instantly.</div>
+        <a href="https://t.me/DJ_Hackrr" target="_blank">Contact @DJ_Hackrr</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="adminScreen">
+    <div class="card">
+      <h2>Admin Dashboard</h2>
+      <div class="sub">Manage users, tiers, and view site statistics.</div>
+      <div class="admin-stats" id="adminStats"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="card">
+      <h2>User Management</h2>
+      <div class="sub">Change tiers, ban/unban users.</div>
+      <div id="adminUserList" style="overflow-x:auto"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="card">
+      <h2>Activity Logs</h2>
+      <div class="sub">Recent site activity.</div>
+      <div class="activity-log" id="adminLogList"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toasts"></div>
+
+<script>
+var SERVER_URL = "";
+var currentUser = null;
+var isAdmin = false;
+var pollTimer = null;
+var statusTimer = null;
+var TIER_COLORS = {free:"var(--t-free)",bronze:"var(--t-bronze)",silver:"var(--t-silver)",gold:"var(--t-gold)",supreme:"var(--t-supreme)"};
+var TIER_LABELS = {free:"Free",bronze:"Bronze",silver:"Silver",gold:"Gold",supreme:"Supreme"};
+var TIER_LIMITS = {free:"1 GB",bronze:"2 GB",silver:"5 GB",gold:"10 GB",supreme:"Unlimited"};
+var TIER_DAILY = {free:"3/day",bronze:"10/day",silver:"25/day",gold:"50/day",supreme:"Unlimited"};
+
+function toast(msg, type){
+  var t = document.createElement("div");
+  t.className = "toast " + (type||"");
+  t.textContent = msg;
+  document.getElementById("toasts").appendChild(t);
+  setTimeout(function(){ t.style.opacity="0"; t.style.transition="opacity .3s"; setTimeout(function(){ t.remove(); },300); },4000);
+}
+
+function api(path, method, body){
+  var opts = {method:method||"GET",headers:{"Content-Type":"application/json"},credentials:"include"};
+  if(body) opts.body = JSON.stringify(body);
+  return fetch(SERVER_URL + path, opts).then(function(r){ return r.json().catch(function(){return {error:"Network error"}}); });
+}
+
+function loadServerStatus(){
+  var rawUrl = "https://raw.githubusercontent.com/ytdownloadweb/WZML-X-Bot/main/tunnel-status.js?t=" + Date.now();
+  fetch(rawUrl).then(function(r){return r.text();}).then(function(txt){
+    var m = txt.match(/window\.tunnelStatus\s*=\s*(\{[^}]+\})/);
+    if(m){
+      try{
+        var data = JSON.parse(m[1]);
+        if(data.status === "online" && data.url){
+          SERVER_URL = data.url;
+          var b = document.getElementById("statusBadge");
+          b.className = "status-badge online";
+          document.getElementById("statusText").textContent = "Online";
+          fetch(data.url + "/ping").then(function(r){return r.json();}).then(function(d){
+            if(!d.ok){
+              document.getElementById("statusBadge").className = "status-badge offline";
+              document.getElementById("statusText").textContent = "Server Down";
             }
-            if (url.length > 10) {
-                icon.textContent = '?';
-                icon.style.background = '#64748b';
-                name.textContent = 'Direct link / unknown platform';
-                el.classList.add('show');
-                return 'Unknown';
-            }
-            el.classList.remove('show');
-            return null;
-        }
+          }).catch(function(){});
+        } else { showOffline(); }
+      }catch(e){ showOffline(); }
+    } else { showOffline(); }
+  }).catch(function(){ showOffline(); });
+}
+function showOffline(){
+  var b = document.getElementById("statusBadge");
+  b.className = "status-badge offline";
+  document.getElementById("statusText").textContent = "Offline";
+}
 
-        var serverUrl = null;
-        var isOnline = false;
-        var visitLogged = false;
-        var pollTimer = null;
-        var currentJobId = null;
+function checkAuth(){
+  if(!SERVER_URL){ setTimeout(checkAuth, 2000); return; }
+  api("/api/auth/me","GET").then(function(d){
+    if(d && d.username){
+      currentUser = d;
+      isAdmin = d.isAdmin;
+      showApp(d);
+    } else { showLogin(); }
+  }).catch(function(){ setTimeout(checkAuth, 3000); });
+}
 
-        function logVisit() {
-            if (!serverUrl || visitLogged) return;
-            visitLogged = true;
-            try {
-                fetch(serverUrl + '/log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ event: 'visit', extra: document.referrer ? 'Referrer: ' + document.referrer : '' })
-                }).catch(function(){});
-            } catch(e) {}
-        }
+function showLogin(){
+  document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("topbar").style.display = "none";
+  document.getElementById("bottomNav").style.display = "none";
+  document.querySelectorAll(".screen").forEach(function(s){ if(s.id !== "loginScreen") s.classList.remove("active"); });
+  document.getElementById("loginScreen").classList.add("active");
+}
 
-        function updateStatus(status) {
-            var badge = document.getElementById('statusBadge');
-            var text = document.getElementById('statusText');
-            var offlineNotice = document.getElementById('offlineNotice');
-            var btn = document.getElementById('downloadBtn');
-            if (status && status.status === 'online' && status.url) {
-                serverUrl = status.url;
-                isOnline = true;
-                badge.className = 'status-badge online';
-                text.textContent = 'Online \u2014 Ready to download';
-                offlineNotice.classList.remove('show');
-                btn.disabled = false;
-                logVisit();
-            } else {
-                serverUrl = null;
-                isOnline = false;
-                badge.className = 'status-badge offline';
-                text.textContent = 'Offline \u2014 Restarting soon';
-                offlineNotice.classList.add('show');
-                btn.disabled = true;
-            }
-        }
+function showApp(user){
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("topbar").style.display = "flex";
+  if(window.innerWidth <= 680) document.getElementById("bottomNav").style.display = "flex";
+  document.getElementById("loginScreen").classList.remove("active");
+  var tb = document.getElementById("tierBadge");
+  tb.textContent = TIER_LABELS[user.tier] || user.tier;
+  tb.style.color = TIER_COLORS[user.tier] || "var(--muted)";
+  tb.style.display = "inline-flex";
+  if(user.isAdmin){
+    document.getElementById("adminNavBtn").style.display = "inline-block";
+    document.getElementById("adminBottomBtn").style.display = "flex";
+  }
+  api("/log","POST",{event:"visit",user:user.username}).catch(function(){});
+  switchScreen("downloader");
+  loadHistory();
+  loadPremium();
+  if(user.isAdmin){ loadAdmin(); }
+}
 
-        function handleStatusError() {
-            document.getElementById('statusBadge').className = 'status-badge offline';
-            document.getElementById('statusText').textContent = 'Offline \u2014 Restarting soon';
-            document.getElementById('offlineNotice').classList.add('show');
-            document.getElementById('downloadBtn').disabled = true;
-        }
+function logout(){
+  api("/api/auth","POST",{action:"logout"}).then(function(){
+    currentUser = null; isAdmin = false;
+    showLogin();
+    toast("Logged out","success");
+  }).catch(function(){ toast("Network error","error"); });
+}
 
-        function startDownload() {
-            var videoUrl = document.getElementById('urlInput').value.trim();
-            if (!videoUrl) return;
-            if (!isOnline || !serverUrl) return;
+function switchScreen(name){
+  document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); });
+  var el = document.getElementById(name + "Screen");
+  if(el) el.classList.add("active");
+  document.querySelectorAll(".nav-btn,.bottom-nav .b").forEach(function(b){
+    if(b.dataset.screen === name) b.classList.add("active");
+    else b.classList.remove("active");
+  });
+  if(name === "history") loadHistory();
+  if(name === "admin") loadAdmin();
+}
 
-            var btn = document.getElementById('downloadBtn');
-            var progressArea = document.getElementById('progressArea');
-            var resultArea = document.getElementById('resultArea');
-            var progressStatus = document.getElementById('progressStatus');
-            var progressBar = document.getElementById('progressBar');
+function detectPlatform(url){
+  var u = url.toLowerCase();
+  var map = [
+    [["youtube.com","youtu.be","m.youtube.com"],"YouTube"],
+    [["instagram.com","instagr.am"],"Instagram"],
+    [["tiktok.com"],"TikTok"],
+    [["facebook.com","fb.watch","m.facebook.com"],"Facebook"],
+    [["twitter.com","x.com","t.co"],"Twitter/X"],
+    [["reddit.com","redd.it"],"Reddit"],
+    [["vimeo.com"],"Vimeo"],
+    [["dailymotion.com","dai.ly"],"Dailymotion"],
+    [["soundcloud.com"],"SoundCloud"],
+    [["pinterest.com","pin.it"],"Pinterest"],
+    [["streamable.com"],"Streamable"],
+    [["twitch.tv"],"Twitch"]
+  ];
+  for(var i=0;i<map.length;i++){
+    for(var j=0;j<map[i][0].length;j++){
+      if(u.indexOf(map[i][0][j]) >= 0) return map[i][1];
+    }
+  }
+  return "Unknown";
+}
 
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Downloading...';
-            resultArea.classList.remove('show');
-            progressArea.classList.add('show');
-            progressBar.style.width = '0%';
-            progressStatus.className = 'progress-status';
-            progressStatus.innerHTML = '<span class="spinner"></span> Sending request...';
+function startDownload(){
+  var url = document.getElementById("urlInput").value.trim();
+  if(!url || url.length < 10){ toast("Enter a valid URL","error"); return; }
+  if(!SERVER_URL){ toast("Server is offline. Please wait.","error"); return; }
+  var platform = detectPlatform(url);
+  var hint = document.getElementById("platformHint");
+  hint.style.display = "flex";
+  hint.innerHTML = '<span class="platform-tag">' + platform + '</span> detected';
+  document.getElementById("dlBtn").disabled = true;
+  document.getElementById("dlBtn").textContent = "Starting…";
+  document.getElementById("tierWarn").style.display = "none";
+  document.getElementById("resultCard").style.display = "none";
+  document.getElementById("progressWrap").style.display = "block";
+  document.getElementById("progressFill").style.width = "0%";
+  document.getElementById("progressStage").textContent = "Starting…";
+  document.getElementById("progressPct").textContent = "0%";
+  api("/api/download","POST",{url:url}).then(function(d){
+    if(d.error){
+      document.getElementById("progressWrap").style.display = "none";
+      document.getElementById("dlBtn").disabled = false;
+      document.getElementById("dlBtn").textContent = "Download";
+      if(d.error.indexOf("too large") >= 0 || d.error.indexOf("limit") >= 0){
+        var tw = document.getElementById("tierWarn");
+        tw.textContent = d.error;
+        tw.style.display = "block";
+        toast(d.error,"warn");
+      } else { toast(d.error,"error"); }
+      return;
+    }
+    if(d.job_id){ pollDownload(d.job_id); }
+  }).catch(function(){
+    toast("Network error","error");
+    document.getElementById("dlBtn").disabled = false;
+    document.getElementById("dlBtn").textContent = "Download";
+    document.getElementById("progressWrap").style.display = "none";
+  });
+}
 
-            fetch(serverUrl + '/api/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: videoUrl })
-            })
-            .then(function(resp) { return resp.json(); })
-            .then(function(data) {
-                if (data.job_id) {
-                    currentJobId = data.job_id;
-                    pollStatus(data.job_id);
-                } else {
-                    progressStatus.className = 'progress-status error';
-                    progressStatus.textContent = 'Error: ' + (data.error || 'Unknown error');
-                    btn.disabled = false;
-                    btn.innerHTML = 'Download';
-                }
-            })
-            .catch(function(err) {
-                progressStatus.className = 'progress-status error';
-                progressStatus.textContent = 'Connection error. Server may be restarting.';
-                btn.disabled = false;
-                btn.innerHTML = 'Download';
-            });
-        }
+function pollDownload(jobId){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(function(){
+    api("/api/status/" + jobId, "GET").then(function(d){
+      if(!d || d.error) return;
+      var pct = d.progress || 0;
+      document.getElementById("progressFill").style.width = pct + "%";
+      document.getElementById("progressPct").textContent = Math.round(pct) + "%";
+      document.getElementById("progressStage").textContent = d.message || "Processing…";
+      if(d.status === "done"){
+        clearInterval(pollTimer); pollTimer = null;
+        document.getElementById("dlBtn").disabled = false;
+        document.getElementById("dlBtn").textContent = "Download";
+        document.getElementById("progressFill").style.width = "100%";
+        document.getElementById("progressPct").textContent = "100%";
+        document.getElementById("progressStage").textContent = "Complete!";
+        var rc = document.getElementById("resultCard");
+        rc.style.display = "flex";
+        document.getElementById("resultName").textContent = d.filename || "Download complete";
+        var sizeMB = d.filesize ? (d.filesize > 1073741824 ? (d.filesize/1073741824).toFixed(1)+" GB" : (d.filesize/1048576).toFixed(1)+" MB") : "";
+        document.getElementById("resultMeta").textContent = sizeMB;
+        var link = document.getElementById("resultLink");
+        if(d.gdrive_link){ link.href = d.gdrive_link; link.style.display = "inline-flex"; }
+        else { link.style.display = "none"; }
+        toast("Download complete!","success");
+        loadHistory();
+      } else if(d.status === "error"){
+        clearInterval(pollTimer); pollTimer = null;
+        document.getElementById("dlBtn").disabled = false;
+        document.getElementById("dlBtn").textContent = "Download";
+        document.getElementById("progressWrap").style.display = "none";
+        toast(d.message || "Download failed","error");
+      }
+    }).catch(function(){});
+  }, 2000);
+}
 
-        function pollStatus(jobId) {
-            if (pollTimer) clearInterval(pollTimer);
-            pollTimer = setInterval(function() {
-                fetch(serverUrl + '/api/status/' + jobId, { cache: 'no-store' })
-                    .then(function(resp) { return resp.json(); })
-                    .then(function(job) {
-                        var progressStatus = document.getElementById('progressStatus');
-                        var progressBar = document.getElementById('progressBar');
-                        var btn = document.getElementById('downloadBtn');
+function loadHistory(){
+  api("/api/history","GET").then(function(d){
+    var el = document.getElementById("historyList");
+    if(!d || d.error || !d.length){
+      el.innerHTML = '<div class="empty">No downloads yet. Your history will appear here.</div>';
+      return;
+    }
+    var html = '<table><thead><tr><th>File</th><th>Platform</th><th>Size</th><th>Date</th><th>Link</th></tr></thead><tbody>';
+    d.forEach(function(item){
+      var size = item.size ? (item.size > 1073741824 ? (item.size/1073741824).toFixed(1)+" GB" : (item.size/1048576).toFixed(1)+" MB") : "—";
+      var date = new Date(item.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      var link = item.link ? '<a href="'+item.link+'" target="_blank">Open ↗</a>' : '—';
+      html += '<tr><td>'+escapeHtml(item.title||"")+'</td><td>'+escapeHtml(item.platform||"")+'</td><td>'+size+'</td><td>'+date+'</td><td>'+link+'</td></tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }).catch(function(){
+    document.getElementById("historyList").innerHTML = '<div class="empty">Failed to load history.</div>';
+  });
+}
 
-                        if (job.status === 'done') {
-                            clearInterval(pollTimer);
-                            pollTimer = null;
-                            progressBar.style.width = '100%';
-                            progressStatus.className = 'progress-status done';
-                            progressStatus.textContent = 'Done!';
+function loadPremium(){
+  var tiers = [
+    {key:"free",name:"Free",price:"₹0",features:["1 GB max file","3 downloads/day","All platforms"]},
+    {key:"bronze",name:"Bronze",price:"₹99/mo",features:["2 GB max file","10 downloads/day","All platforms"]},
+    {key:"silver",name:"Silver",price:"₹199/mo",features:["5 GB max file","25 downloads/day","Priority processing"]},
+    {key:"gold",name:"Gold",price:"₹399/mo",features:["10 GB max file","50 downloads/day","Priority processing"]},
+    {key:"supreme",name:"Supreme",price:"₹699/mo",features:["Unlimited file size","Unlimited downloads","Bot access included","Highest priority"]}
+  ];
+  var html = '';
+  tiers.forEach(function(t){
+    var isCurrent = currentUser && currentUser.tier === t.key;
+    var color = TIER_COLORS[t.key];
+    html += '<div class="tier-card' + (isCurrent?' current':'') + '" style="border-color:'+(isCurrent?color:'var(--border)')+'">';
+    html += '<div class="tname" style="color:'+color+'">'+t.name+'</div>';
+    html += '<div class="tprice">'+t.price+'</div>';
+    html += '<ul>';
+    t.features.forEach(function(f){ html += '<li>'+f+'</li>'; });
+    html += '</ul>';
+    if(isCurrent) html += '<div style="margin-top:10px;font-size:12px;font-weight:700;color:'+color+'">YOUR CURRENT TIER</div>';
+    html += '</div>';
+  });
+  document.getElementById("tierCards").innerHTML = html;
+}
 
-                            var resultArea = document.getElementById('resultArea');
-                            var fileInfo = document.getElementById('fileInfo');
-                            var gdriveLink = document.getElementById('gdriveLink');
+function loadAdmin(){
+  api("/api/admin/stats","GET").then(function(d){
+    if(d && !d.error){
+      var html = '';
+      html += '<div class="stat-box"><div class="label">Total Users</div><div class="value">'+d.totalUsers+'</div></div>';
+      html += '<div class="stat-box"><div class="label">Total Downloads</div><div class="value">'+d.totalDownloads+'</div></div>';
+      html += '<div class="stat-box"><div class="label">Today Downloads</div><div class="value">'+d.todayDownloads+'</div></div>';
+      html += '<div class="stat-box"><div class="label">Active Sessions</div><div class="value">'+d.activeSessions+'</div></div>';
+      document.getElementById("adminStats").innerHTML = html;
+    }
+  }).catch(function(){});
+  api("/api/admin/users","GET").then(function(d){
+    if(!d || d.error){ document.getElementById("adminUserList").innerHTML = '<div class="empty">Failed to load users.</div>'; return; }
+    if(!d.length){ document.getElementById("adminUserList").innerHTML = '<div class="empty">No users yet.</div>'; return; }
+    var html = '<table><thead><tr><th>Username</th><th>Tier</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    d.forEach(function(u){
+      var tier = u.tier || "free";
+      var banned = u.banned || false;
+      html += '<tr>';
+      html += '<td>'+escapeHtml(u.username)+'</td>';
+      html += '<td><select class="tier-select" onchange="changeTier(\''+u.username+'\',this.value)">';
+      Object.keys(TIER_LABELS).forEach(function(k){
+        html += '<option value="'+k+'"'+(tier===k?' selected':'')+'>'+TIER_LABELS[k]+'</option>';
+      });
+      html += '</select></td>';
+      html += '<td>'+(banned?'<span style="color:var(--danger)">Banned</span>':'<span style="color:var(--success)">Active</span>')+'</td>';
+      html += '<td>'+(banned?'<button class="ban-btn unban" onclick="unbanUser(\''+u.username+'\')">Unban</button>':'<button class="ban-btn" onclick="banUser(\''+u.username+'\')">Ban</button>')+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById("adminUserList").innerHTML = html;
+  }).catch(function(){});
+  api("/api/admin/logs","GET").then(function(d){
+    if(!d || d.error){ document.getElementById("adminLogList").innerHTML = '<div class="empty">No logs.</div>'; return; }
+    if(!d.length){ document.getElementById("adminLogList").innerHTML = '<div class="empty">No activity yet.</div>'; return; }
+    var html = '';
+    d.forEach(function(l){
+      var t = l.created_at ? new Date(l.created_at).toLocaleString("en-IN") : "";
+      html += '<div class="row"><span><b>'+escapeHtml(l.event||"")+'</b>'+(l.ip?' · IP: '+escapeHtml(l.ip):'')+'</span><span class="when">'+t+'</span></div>';
+    });
+    document.getElementById("adminLogList").innerHTML = html;
+  }).catch(function(){});
+}
 
-                            var sizeStr = '';
-                            if (job.filesize > 0) {
-                                var mb = job.filesize / (1024 * 1024);
-                                sizeStr = mb > 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb.toFixed(1) + ' MB';
-                            }
-                            fileInfo.innerHTML = (job.filename || 'File') + (sizeStr ? ' &middot; ' + sizeStr : '');
-                            if (job.gdrive_link) {
-                                gdriveLink.href = job.gdrive_link;
-                                gdriveLink.textContent = 'Open in Google Drive';
-                                gdriveLink.style.display = 'inline-block';
-                            } else {
-                                gdriveLink.textContent = 'File uploaded (no link available)';
-                                gdriveLink.style.display = 'none';
-                            }
-                            resultArea.classList.add('show');
-                            btn.disabled = false;
-                            btn.innerHTML = 'Download';
-                        } else if (job.status === 'error') {
-                            clearInterval(pollTimer);
-                            pollTimer = null;
-                            progressStatus.className = 'progress-status error';
-                            progressStatus.textContent = job.message || 'Download failed.';
-                            btn.disabled = false;
-                            btn.innerHTML = 'Download';
-                        } else {
-                            progressBar.style.width = (job.progress || 0) + '%';
-                            progressStatus.innerHTML = '<span class="spinner"></span>' + (job.message || 'Processing...');
-                        }
-                    })
-                    .catch(function() {});
-            }, 2000);
-        }
+function changeTier(username, tier){
+  api("/api/admin/set-tier","POST",{username:username,tier:tier}).then(function(d){
+    if(d.success){ toast("Tier changed for " + username,"success"); loadAdmin(); }
+    else toast(d.error || "Failed","error");
+  }).catch(function(){ toast("Network error","error"); });
+}
+function banUser(username){
+  api("/api/admin/ban-user","POST",{username:username}).then(function(d){
+    if(d.success){ toast("User banned: " + username,"success"); loadAdmin(); }
+    else toast(d.error || "Failed","error");
+  }).catch(function(){ toast("Network error","error"); });
+}
+function unbanUser(username){
+  api("/api/admin/unban-user","POST",{username:username}).then(function(d){
+    if(d.success){ toast("User unbanned: " + username,"success"); loadAdmin(); }
+    else toast(d.error || "Failed","error");
+  }).catch(function(){ toast("Network error","error"); });
+}
 
-        document.getElementById('urlInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') startDownload();
-        });
+function escapeHtml(s){
+  if(!s) return "";
+  return String(s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""").replace(/'/g,"&#39;");
+}
 
-        function loadTunnelStatus() {
-            var url = 'https://raw.githubusercontent.com/ytdownloadweb/WZML-X-Bot/main/tunnel-status.js?t=' + Date.now();
-            fetch(url)
-                .then(function(resp) { return resp.text(); })
-                .then(function(text) {
-                    var match = text.match(/window\.tunnelStatus\s*=\s*(\{[\s\S]*?\})\s*;?\s*$/);
-                    if (match) {
-                        updateStatus(JSON.parse(match[1]));
-                    } else {
-                        try {
-                            eval(text);
-                            if (typeof tunnelStatus !== 'undefined') updateStatus(tunnelStatus);
-                            else handleStatusError();
-                        } catch(e) { handleStatusError(); }
-                    }
-                })
-                .catch(function() { handleStatusError(); });
-        }
+document.addEventListener("DOMContentLoaded", function(){
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click", function(){
+      document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active");});
+      t.classList.add("active");
+      if(t.dataset.tab === "signin"){
+        document.getElementById("signinForm").style.display = "block";
+        document.getElementById("registerForm").style.display = "none";
+      } else {
+        document.getElementById("signinForm").style.display = "none";
+        document.getElementById("registerForm").style.display = "block";
+      }
+    });
+  });
+  document.getElementById("adminToggle").addEventListener("click", function(){
+    var f = document.getElementById("adminLoginForm");
+    f.style.display = f.style.display === "none" ? "block" : "none";
+  });
+  document.getElementById("signinForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var u = document.getElementById("signinUser").value.trim();
+    var p = document.getElementById("signinPass").value;
+    document.getElementById("signinError").textContent = "";
+    document.getElementById("signinBtn").disabled = true;
+    document.getElementById("signinBtn").textContent = "Signing in…";
+    api("/api/auth","POST",{action:"signin",username:u,password:p}).then(function(d){
+      document.getElementById("signinBtn").disabled = false;
+      document.getElementById("signinBtn").textContent = "Sign In";
+      if(d.success){ toast("Welcome back, " + d.username + "!","success"); checkAuth(); }
+      else document.getElementById("signinError").textContent = d.error || "Login failed";
+    }).catch(function(){
+      document.getElementById("signinBtn").disabled = false;
+      document.getElementById("signinBtn").textContent = "Sign In";
+      document.getElementById("signinError").textContent = "Network error";
+    });
+  });
+  document.getElementById("registerForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var u = document.getElementById("regUser").value.trim();
+    var p = document.getElementById("regPass").value;
+    var p2 = document.getElementById("regPass2").value;
+    document.getElementById("regError").textContent = "";
+    if(p !== p2){ document.getElementById("regError").textContent = "Passwords don't match"; return; }
+    document.getElementById("regBtn").disabled = true;
+    document.getElementById("regBtn").textContent = "Creating…";
+    api("/api/auth","POST",{action:"register",username:u,password:p}).then(function(d){
+      document.getElementById("regBtn").disabled = false;
+      document.getElementById("regBtn").textContent = "Create Account";
+      if(d.success){ toast("Account created! Welcome " + d.username,"success"); checkAuth(); }
+      else document.getElementById("regError").textContent = d.error || "Registration failed";
+    }).catch(function(){
+      document.getElementById("regBtn").disabled = false;
+      document.getElementById("regBtn").textContent = "Create Account";
+      document.getElementById("regError").textContent = "Network error";
+    });
+  });
+  document.getElementById("adminLoginBtn").addEventListener("click", function(){
+    var p = document.getElementById("adminPass").value;
+    document.getElementById("adminLoginBtn").disabled = true;
+    api("/api/auth","POST",{action:"admin_login",password:p}).then(function(d){
+      document.getElementById("adminLoginBtn").disabled = false;
+      if(d.success){ toast("Admin logged in","success"); checkAuth(); }
+      else toast(d.error || "Admin login failed","error");
+    }).catch(function(){
+      document.getElementById("adminLoginBtn").disabled = false;
+      toast("Network error","error");
+    });
+  });
+  document.getElementById("dlBtn").addEventListener("click", startDownload);
+  document.getElementById("urlInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter") startDownload();
+  });
+  document.getElementById("urlInput").addEventListener("input", function(){
+    var url = this.value.trim();
+    if(url.length > 5){
+      var platform = detectPlatform(url);
+      var hint = document.getElementById("platformHint");
+      hint.style.display = "flex";
+      hint.innerHTML = '<span class="platform-tag">' + platform + '</span> detected';
+    } else {
+      document.getElementById("platformHint").style.display = "none";
+    }
+  });
+  document.querySelectorAll("[data-screen]").forEach(function(b){
+    b.addEventListener("click", function(){
+      switchScreen(b.dataset.screen);
+    });
+  });
+  document.getElementById("logoutTopBtn").addEventListener("click", logout);
+  document.getElementById("logoutBtn").addEventListener("click", logout);
+  loadServerStatus();
+  statusTimer = setInterval(loadServerStatus, 120000);
+  checkAuth();
+});
 
-        loadTunnelStatus();
-        setInterval(loadTunnelStatus, 120000);
-    </script>
+window.changeTier = changeTier;
+window.banUser = banUser;
+window.unbanUser = unbanUser;
+</script>
 </body>
 </html>
