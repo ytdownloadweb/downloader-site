@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YTDownload - Free Video Downloader</title>
-    <meta name="description" content="Download videos from YouTube, Instagram, TikTok, Facebook and more for free. Auto-detects platform. Fast, simple, no signup required.">
+    <meta name="description" content="Download videos from YouTube, Instagram, TikTok, Facebook and more. Paste link, auto-detect platform, download to Google Drive.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -14,10 +14,10 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
         body::before { content: ''; position: fixed; top:0; left:0; right:0; bottom:0; background: radial-gradient(circle at 20% 50%, rgba(124,58,237,0.15), transparent 50%), radial-gradient(circle at 80% 80%, rgba(34,197,94,0.08), transparent 50%); z-index: -1; }
         .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; padding: 60px 20px 30px; }
-        header h1 { font-size: 2.8rem; font-weight: 800; background: linear-gradient(135deg, var(--accent-light), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; }
-        header p { color: var(--text-dim); margin-top: 10px; font-size: 1.1rem; }
-        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; margin: 20px auto; transition: all 0.3s; }
+        header { text-align: center; padding: 50px 20px 20px; }
+        header h1 { font-size: 2.6rem; font-weight: 800; background: linear-gradient(135deg, var(--accent-light), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; }
+        header p { color: var(--text-dim); margin-top: 8px; font-size: 1.05rem; }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; margin: 16px auto; transition: all 0.3s; }
         .status-badge.online { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
         .status-badge.offline { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
         .status-badge.checking { background: rgba(245,158,11,0.15); color: var(--orange); border: 1px solid rgba(245,158,11,0.3); }
@@ -26,49 +26,58 @@
         .status-badge.offline .status-dot { background: var(--red); }
         .status-badge.checking .status-dot { background: var(--orange); }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-        .downloader-card { background: var(--card); border-radius: 20px; padding: 40px; margin-top: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); }
+        .downloader-card { background: var(--card); border-radius: 20px; padding: 36px; margin-top: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); }
         .input-group { display: flex; gap: 10px; flex-direction: column; }
         @media (min-width: 640px) { .input-group { flex-direction: row; } }
         .url-input { flex: 1; padding: 16px 20px; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(0,0,0,0.3); color: var(--text); font-size: 1rem; outline: none; transition: border-color 0.3s; }
         .url-input:focus { border-color: var(--accent); }
         .url-input::placeholder { color: var(--text-dim); }
         .download-btn { padding: 16px 32px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #6d28d9); color: white; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-        .download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,58,237,0.4); }
-        .download-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .platform-detect { margin-top: 16px; display: none; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; }
+        .download-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,58,237,0.4); }
+        .download-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .platform-detect { margin-top: 14px; display: none; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; }
         .platform-detect.show { display: flex; }
         .platform-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: white; }
-        .platform-name { color: var(--green); font-weight: 600; font-size: 0.95rem; }
-        .result-area { margin-top: 30px; display: none; }
-        .result-area.show { display: block; }
-        .result-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.05); }
-        .result-card h3 { color: var(--green); margin-bottom: 12px; }
-        .result-link { display: inline-block; padding: 12px 24px; background: var(--accent); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 10px; transition: background 0.3s; }
-        .result-link:hover { background: #6d28d9; }
-        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .platform-name { color: var(--green); font-weight: 600; font-size: 0.9rem; }
+        .progress-area { margin-top: 24px; display: none; }
+        .progress-area.show { display: block; }
+        .progress-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.05); }
+        .progress-bar-outer { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin: 12px 0; }
+        .progress-bar-inner { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 4px; transition: width 0.5s ease; width: 0%; }
+        .progress-status { color: var(--text-dim); font-size: 0.95rem; text-align: center; }
+        .progress-status.error { color: var(--red); }
+        .progress-status.done { color: var(--green); }
+        .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .error-msg { color: var(--red); }
-        .gdrive-info { margin-top: 20px; padding: 16px; background: rgba(15,157,88,0.08); border: 1px solid rgba(15,157,88,0.15); border-radius: 12px; text-align: center; }
-        .gdrive-info p { color: var(--text-dim); font-size: 0.9rem; }
+        .result-area { margin-top: 20px; display: none; }
+        .result-area.show { display: block; }
+        .result-card { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 12px; padding: 24px; text-align: center; }
+        .result-card h3 { color: var(--green); margin-bottom: 12px; font-size: 1.2rem; }
+        .result-card .file-info { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 16px; }
+        .result-link { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, var(--green), #16a34a); color: white; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 1.05rem; transition: all 0.2s; }
+        .result-link:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,197,94,0.4); }
+        .result-note { color: var(--text-dim); font-size: 0.85rem; margin-top: 12px; }
         .offline-notice { display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; padding: 20px; margin-top: 20px; text-align: center; color: var(--text-dim); }
         .offline-notice.show { display: block; }
         .offline-notice strong { color: var(--red); }
-        .premium-section { margin-top: 50px; background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(34,197,94,0.1)); border: 1px solid rgba(124,58,237,0.3); border-radius: 20px; padding: 36px; text-align: center; }
-        .premium-section h2 { font-size: 1.6rem; margin-bottom: 12px; background: linear-gradient(135deg, var(--accent-light), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .premium-section p { color: var(--text-dim); font-size: 1.05rem; margin-bottom: 24px; max-width: 500px; margin-left: auto; margin-right: auto; }
-        .premium-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-bottom: 24px; }
-        .premium-badge { padding: 8px 18px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); border-radius: 999px; font-size: 0.9rem; color: var(--green); }
-        .premium-btn { display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #0088cc, #005580); color: white; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 1.1rem; transition: all 0.2s; }
+        .gdrive-info { margin-top: 20px; padding: 14px; background: rgba(15,157,88,0.08); border: 1px solid rgba(15,157,88,0.15); border-radius: 12px; text-align: center; }
+        .gdrive-info p { color: var(--text-dim); font-size: 0.88rem; }
+        .premium-section { margin-top: 40px; background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(34,197,94,0.1)); border: 1px solid rgba(124,58,237,0.3); border-radius: 20px; padding: 36px; text-align: center; }
+        .premium-section h2 { font-size: 1.5rem; margin-bottom: 10px; background: linear-gradient(135deg, var(--accent-light), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .premium-section p { color: var(--text-dim); font-size: 1rem; margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .premium-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .premium-badge { padding: 6px 16px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); border-radius: 999px; font-size: 0.85rem; color: var(--green); }
+        .premium-btn { display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #0088cc, #005580); color: white; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 1.05rem; transition: all 0.2s; }
         .premium-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,136,204,0.4); }
-        .premium-note { color: var(--text-dim); font-size: 0.85rem; margin-top: 16px; }
-        footer { text-align: center; padding: 40px 20px; color: var(--text-dim); font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 40px; }
+        .premium-note { color: var(--text-dim); font-size: 0.82rem; margin-top: 12px; }
+        footer { text-align: center; padding: 30px 20px; color: var(--text-dim); font-size: 0.82rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 30px; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>YTDownload</h1>
-            <p>Paste any video link — we auto-detect the platform and download it for you</p>
+            <p>Paste any video link — we auto-detect, download, and mirror to Google Drive</p>
             <div id="statusBadge" class="status-badge checking">
                 <span class="status-dot"></span>
                 <span id="statusText">Checking status...</span>
@@ -77,8 +86,8 @@
 
         <div class="downloader-card">
             <div class="input-group">
-                <input type="text" id="urlInput" class="url-input" placeholder="Paste any link — YouTube, Instagram, TikTok, Facebook, Twitter..." autocomplete="off" oninput="detectPlatform()">
-                <button id="downloadBtn" class="download-btn" onclick="submitDownload()" disabled>Download</button>
+                <input type="text" id="urlInput" class="url-input" placeholder="Paste any link — YouTube, Instagram, TikTok, Facebook..." autocomplete="off" oninput="detectPlatform()">
+                <button id="downloadBtn" class="download-btn" onclick="startDownload()" disabled>Download</button>
             </div>
 
             <div id="platformDetect" class="platform-detect">
@@ -88,24 +97,33 @@
 
             <div id="offlineNotice" class="offline-notice">
                 <strong>Server is currently offline.</strong><br>
-                The download server restarts periodically. It will be back online shortly.<br>
-                You can also use the bot directly on Telegram — send your link to the bot.
+                The download server restarts periodically and will be back online shortly.
+            </div>
+
+            <div id="progressArea" class="progress-area">
+                <div class="progress-card">
+                    <div id="progressStatus" class="progress-status"><span class="spinner"></span>Starting...</div>
+                    <div class="progress-bar-outer"><div id="progressBar" class="progress-bar-inner"></div></div>
+                </div>
             </div>
 
             <div id="resultArea" class="result-area">
                 <div class="result-card">
-                    <div id="resultContent"></div>
+                    <h3>&#10003; Download Complete!</h3>
+                    <div id="fileInfo" class="file-info"></div>
+                    <a id="gdriveLink" href="#" target="_blank" class="result-link">Open in Google Drive</a>
+                    <p class="result-note">File is shared publicly — you can download it directly from Google Drive.</p>
                 </div>
             </div>
 
             <div class="gdrive-info">
-                <p>All downloads are mirrored to our shared Google Drive folder. You can browse and download your files directly from there — no waiting, no ads.</p>
+                <p>All downloads are mirrored to our shared Google Drive folder. Files are available immediately after processing — no waiting, no ads.</p>
             </div>
         </div>
 
         <div class="premium-section">
             <h2>Want Faster Speeds & Unlimited Bandwidth?</h2>
-            <p>The website version is free but has scheduled downtime and shared bandwidth. Get the <strong style="color:var(--text);">premium Telegram bot version</strong> for fastest download speeds, unlimited bandwidth, priority processing, and 24/7 availability — no restarts, no waiting.</p>
+            <p>The website is free but has scheduled downtime and shared bandwidth. Get the <strong style="color:var(--text);">premium Telegram bot version</strong> for fastest downloads, unlimited bandwidth, priority processing, and 24/7 availability.</p>
             <div class="premium-badges">
                 <span class="premium-badge">Fastest Speeds</span>
                 <span class="premium-badge">Unlimited Bandwidth</span>
@@ -118,8 +136,8 @@
         </div>
 
         <footer>
-            <p>YTDownload — Free Video Downloader | Powered by WZML-X Bot & yt-dlp</p>
-            <p style="margin-top:8px;">By using this service you agree that you are responsible for respecting copyright laws in your jurisdiction.</p>
+            <p>YTDownload — Free Video Downloader | Powered by yt-dlp + Google Drive</p>
+            <p style="margin-top:6px;">By using this service you agree that you are responsible for respecting copyright laws in your jurisdiction.</p>
         </footer>
     </div>
 
@@ -141,7 +159,7 @@
 
         function detectPlatform() {
             var url = document.getElementById('urlInput').value.trim().toLowerCase();
-            var detect = document.getElementById('platformDetect');
+            var el = document.getElementById('platformDetect');
             var icon = document.getElementById('platformIcon');
             var name = document.getElementById('platformName');
             for (var i = 0; i < platforms.length; i++) {
@@ -150,7 +168,7 @@
                         icon.textContent = platforms[i].icon;
                         icon.style.background = platforms[i].color;
                         name.textContent = platforms[i].name + ' detected';
-                        detect.classList.add('show');
+                        el.classList.add('show');
                         return platforms[i].name;
                     }
                 }
@@ -159,26 +177,28 @@
                 icon.textContent = '?';
                 icon.style.background = '#64748b';
                 name.textContent = 'Direct link / unknown platform';
-                detect.classList.add('show');
+                el.classList.add('show');
                 return 'Unknown';
             }
-            detect.classList.remove('show');
+            el.classList.remove('show');
             return null;
         }
 
-        var botUrl = null;
-        var logUrl = null;
+        var serverUrl = null;
         var isOnline = false;
         var visitLogged = false;
+        var pollTimer = null;
+        var currentJobId = null;
 
-        function logEvent(event, url, extra) {
-            if (!logUrl) return;
+        function logVisit() {
+            if (!serverUrl || visitLogged) return;
+            visitLogged = true;
             try {
-                var platform = detectPlatform() || '';
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', logUrl + '/log', true);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send(JSON.stringify({ event: event, url: url || '', extra: extra || '', platform: platform }));
+                fetch(serverUrl + '/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ event: 'visit', extra: document.referrer ? 'Referrer: ' + document.referrer : '' })
+                }).catch(function(){});
             } catch(e) {}
         }
 
@@ -186,118 +206,151 @@
             var badge = document.getElementById('statusBadge');
             var text = document.getElementById('statusText');
             var offlineNotice = document.getElementById('offlineNotice');
-            var downloadBtn = document.getElementById('downloadBtn');
+            var btn = document.getElementById('downloadBtn');
             if (status && status.status === 'online' && status.url) {
-                botUrl = status.url;
-                logUrl = status.logUrl || null;
+                serverUrl = status.url;
                 isOnline = true;
                 badge.className = 'status-badge online';
                 text.textContent = 'Online \u2014 Ready to download';
                 offlineNotice.classList.remove('show');
-                downloadBtn.disabled = false;
-                if (!visitLogged) {
-                    visitLogged = true;
-                    var ref = document.referrer ? 'Referrer: ' + document.referrer : '';
-                    logEvent('visit', '', ref);
-                }
+                btn.disabled = false;
+                logVisit();
             } else {
-                botUrl = null;
-                logUrl = null;
+                serverUrl = null;
                 isOnline = false;
                 badge.className = 'status-badge offline';
                 text.textContent = 'Offline \u2014 Restarting soon';
                 offlineNotice.classList.add('show');
-                downloadBtn.disabled = true;
+                btn.disabled = true;
             }
         }
 
         function handleStatusError() {
-            var badge = document.getElementById('statusBadge');
-            badge.className = 'status-badge offline';
+            document.getElementById('statusBadge').className = 'status-badge offline';
             document.getElementById('statusText').textContent = 'Offline \u2014 Restarting soon';
             document.getElementById('offlineNotice').classList.add('show');
             document.getElementById('downloadBtn').disabled = true;
         }
 
-        function submitDownload() {
-            var urlInput = document.getElementById('urlInput');
+        function startDownload() {
+            var videoUrl = document.getElementById('urlInput').value.trim();
+            if (!videoUrl) return;
+            if (!isOnline || !serverUrl) return;
+
+            var btn = document.getElementById('downloadBtn');
+            var progressArea = document.getElementById('progressArea');
             var resultArea = document.getElementById('resultArea');
-            var resultContent = document.getElementById('resultContent');
-            var downloadBtn = document.getElementById('downloadBtn');
-            var videoUrl = urlInput.value.trim();
-            if (!videoUrl) {
-                resultArea.classList.add('show');
-                resultContent.innerHTML = '<p class="error-msg">Please paste a video URL first.</p>';
-                return;
-            }
-            if (!isOnline || !botUrl) {
-                resultArea.classList.add('show');
-                resultContent.innerHTML = '<p class="error-msg">The download server is currently offline. Please try again in a few minutes.</p>';
-                return;
-            }
-            var platform = detectPlatform() || 'Unknown';
-            downloadBtn.disabled = true;
-            downloadBtn.innerHTML = '<span class="spinner"></span> Processing...';
-            resultArea.classList.add('show');
-            resultContent.innerHTML = '<p style="color:var(--text-dim)"><span class="spinner"></span> Sending your request...</p>';
-            logEvent('download', videoUrl);
-            logEvent('open_manager', videoUrl);
-            resultContent.innerHTML =
-                '<h3>Download Server is Ready</h3>' +
-                '<p style="color:var(--text-dim);margin-bottom:8px;">Detected: <strong style="color:var(--green)">' + escapeHtml(platform) + '</strong></p>' +
-                '<p style="color:var(--text-dim);margin-bottom:16px;">Click below to open the download manager. Your link has been copied to clipboard \u2014 just paste it there.</p>' +
-                '<a href="' + botUrl + '" target="_blank" class="result-link">Open Download Manager</a>' +
-                '<p style="color:var(--text-dim);margin-top:16px;font-size:0.85rem;">Your URL: ' + escapeHtml(videoUrl) + '</p>' +
-                '<p style="color:var(--text-dim);margin-top:8px;font-size:0.85rem;">Files are mirrored to Google Drive after download.</p>';
-            try { navigator.clipboard.writeText(videoUrl); } catch(e) {}
-            downloadBtn.disabled = false;
-            downloadBtn.innerHTML = 'Download';
+            var progressStatus = document.getElementById('progressStatus');
+            var progressBar = document.getElementById('progressBar');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Downloading...';
+            resultArea.classList.remove('show');
+            progressArea.classList.add('show');
+            progressBar.style.width = '0%';
+            progressStatus.className = 'progress-status';
+            progressStatus.innerHTML = '<span class="spinner"></span> Sending request...';
+
+            fetch(serverUrl + '/api/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: videoUrl })
+            })
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                if (data.job_id) {
+                    currentJobId = data.job_id;
+                    pollStatus(data.job_id);
+                } else {
+                    progressStatus.className = 'progress-status error';
+                    progressStatus.textContent = 'Error: ' + (data.error || 'Unknown error');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Download';
+                }
+            })
+            .catch(function(err) {
+                progressStatus.className = 'progress-status error';
+                progressStatus.textContent = 'Connection error. Server may be restarting.';
+                btn.disabled = false;
+                btn.innerHTML = 'Download';
+            });
         }
 
-        function escapeHtml(text) {
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function pollStatus(jobId) {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(function() {
+                fetch(serverUrl + '/api/status/' + jobId, { cache: 'no-store' })
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(job) {
+                        var progressStatus = document.getElementById('progressStatus');
+                        var progressBar = document.getElementById('progressBar');
+                        var btn = document.getElementById('downloadBtn');
+
+                        if (job.status === 'done') {
+                            clearInterval(pollTimer);
+                            pollTimer = null;
+                            progressBar.style.width = '100%';
+                            progressStatus.className = 'progress-status done';
+                            progressStatus.textContent = 'Done!';
+
+                            var resultArea = document.getElementById('resultArea');
+                            var fileInfo = document.getElementById('fileInfo');
+                            var gdriveLink = document.getElementById('gdriveLink');
+
+                            var sizeStr = '';
+                            if (job.filesize > 0) {
+                                var mb = job.filesize / (1024 * 1024);
+                                sizeStr = mb > 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb.toFixed(1) + ' MB';
+                            }
+                            fileInfo.innerHTML = (job.filename || 'File') + (sizeStr ? ' &middot; ' + sizeStr : '');
+                            if (job.gdrive_link) {
+                                gdriveLink.href = job.gdrive_link;
+                                gdriveLink.textContent = 'Open in Google Drive';
+                                gdriveLink.style.display = 'inline-block';
+                            } else {
+                                gdriveLink.textContent = 'File uploaded (no link available)';
+                                gdriveLink.style.display = 'none';
+                            }
+                            resultArea.classList.add('show');
+                            btn.disabled = false;
+                            btn.innerHTML = 'Download';
+                        } else if (job.status === 'error') {
+                            clearInterval(pollTimer);
+                            pollTimer = null;
+                            progressStatus.className = 'progress-status error';
+                            progressStatus.textContent = job.message || 'Download failed.';
+                            btn.disabled = false;
+                            btn.innerHTML = 'Download';
+                        } else {
+                            progressBar.style.width = (job.progress || 0) + '%';
+                            progressStatus.innerHTML = '<span class="spinner"></span>' + (job.message || 'Processing...');
+                        }
+                    })
+                    .catch(function() {});
+            }, 2000);
         }
 
         document.getElementById('urlInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') submitDownload();
+            if (e.key === 'Enter') startDownload();
         });
 
-        // === Fetch tunnel status via fetch() (NOT script tag) ===
-        // raw.githubusercontent.com serves .js as text/plain with nosniff,
-        // so <script> tags are blocked by the browser. fetch() works because
-        // raw.githubusercontent.com sends Access-Control-Allow-Origin: *.
         function loadTunnelStatus() {
             var url = 'https://raw.githubusercontent.com/ytdownloadweb/WZML-X-Bot/main/tunnel-status.js?t=' + Date.now();
             fetch(url)
-                .then(function(resp) {
-                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                    return resp.text();
-                })
+                .then(function(resp) { return resp.text(); })
                 .then(function(text) {
-                    // Parse "window.tunnelStatus = {...};" to extract the JSON object
                     var match = text.match(/window\.tunnelStatus\s*=\s*(\{[\s\S]*?\})\s*;?\s*$/);
                     if (match) {
-                        var status = JSON.parse(match[1]);
-                        updateStatus(status);
+                        updateStatus(JSON.parse(match[1]));
                     } else {
                         try {
                             eval(text);
-                            if (typeof tunnelStatus !== 'undefined') {
-                                updateStatus(tunnelStatus);
-                            } else {
-                                handleStatusError();
-                            }
-                        } catch(e) {
-                            handleStatusError();
-                        }
+                            if (typeof tunnelStatus !== 'undefined') updateStatus(tunnelStatus);
+                            else handleStatusError();
+                        } catch(e) { handleStatusError(); }
                     }
                 })
-                .catch(function(err) {
-                    console.log('Status fetch failed:', err);
-                    handleStatusError();
-                });
+                .catch(function() { handleStatusError(); });
         }
 
         loadTunnelStatus();
