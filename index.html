@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="YTDownload — Free video downloader for YouTube, Instagram, TikTok, Facebook and more. Fast, secure, no ads. Download videos directly to Cloud storage.">
+    <meta name="keywords" content="video downloader, youtube downloader, instagram downloader, tiktok downloader, mp3 converter, free downloader, yt-dlp">
+    <meta name="author" content="YTDownload">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="YTDownload — Free Video Downloader">
+    <meta property="og:description" content="Download videos from YouTube, Instagram, TikTok and more. Free, fast, no ads.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ytdownloadweb.github.io/downloader-site/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="YTDownload — Free Video Downloader">
+    <meta name="twitter:description" content="Download videos from YouTube, Instagram, TikTok and more. Free, fast, no ads.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>▽</text></svg>">
 <title>YTDownload — Video Downloader</title>
 <style>
 :root{--bg:#0f0f0f;--card:#1a1a2e;--card2:#16213e;--accent:#7c3aed;--accent2:#9d6dff;--success:#22c55e;--danger:#ef4444;--warn:#f59e0b;--text:#e5e7eb;--muted:#9ca3af;--border:rgba(255,255,255,0.08);--t-free:#64748b;--t-bronze:#cd7f32;--t-silver:#c0c0c0;--t-gold:#ffd700;--t-supreme:#ff00ff}
@@ -23,6 +35,21 @@ input{font-family:inherit}
 .status-badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--muted)}
 .status-dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
 .status-badge.online .status-dot{background:var(--success);animation:pulse 2s infinite}
+.paste-btn{background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);color:var(--text);border-radius:12px;padding:12px 14px;font-size:18px;cursor:pointer;transition:all .15s}
+.paste-btn:hover{background:rgba(124,58,237,0.3);transform:scale(1.05)}
+.paste-btn:active{transform:scale(0.95)}
+.site-footer{margin-top:30px;padding:20px 0;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--muted)}
+.site-footer a{color:var(--accent2);text-decoration:none}
+.site-footer a:hover{text-decoration:underline}
+.card{transition:border-color .2s}
+.card:hover{border-color:rgba(124,58,237,0.2)}
+.dl-btn{transition:all .15s}
+.dl-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,0.3)}
+.dl-btn:active{transform:translateY(0)}
+.cloud-link{transition:all .15s}
+.cloud-link:hover{transform:scale(1.03)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.screen.active{animation:fadeIn .25s ease}
 .status-badge.offline .status-dot{background:var(--danger)}
 .status-badge.online{color:var(--success);border-color:rgba(34,197,94,0.3)}
 .status-badge.offline{color:var(--danger);border-color:rgba(239,68,68,0.3)}
@@ -98,8 +125,8 @@ input{font-family:inherit}
 .result .info{flex:1;min-width:160px}
 .result .info .name{font-weight:600}
 .result .info .meta{font-size:12px;color:var(--muted)}
-.gdrive-link{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:9px;font-weight:700;font-size:13px;background:var(--success);color:#fff;transition:opacity .15s}
-.gdrive-link:hover{opacity:.9}
+.cloud-link{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:9px;font-weight:700;font-size:13px;background:var(--success);color:#fff;transition:opacity .15s}
+.cloud-link:hover{opacity:.9}
 .tier-warn{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:13px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);color:#fbbf24}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border)}
@@ -233,14 +260,34 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
   <div class="screen active" id="downloaderScreen">
     <div class="card">
       <h2>Download Video</h2>
-      <div class="sub">Paste any video URL — we auto-detect the platform and download to Google Drive.</div>
+      <div class="sub">Paste any video URL — we auto-detect the platform and download to Cloud.</div>
       <div class="guest-banner" id="guestBanner" style="display:none">
         <span>You're browsing as a guest — <b id="guestLimit">Loading quota…</b>.</span>
         <span class="signin-link" id="guestSigninLink">Sign in for 5/day →</span>
       </div>
       <div class="url-row">
-        <input type="text" class="url-input" id="urlInput" placeholder="Paste YouTube, Instagram, TikTok, Facebook, Twitter URL…">
+        <input type="text" class="url-input" id="urlInput" placeholder="Paste YouTube, Instagram, TikTok, Facebook URL…">
+        <button class="paste-btn" id="pasteBtn" title="Paste from clipboard" onclick="pasteFromClipboard()">📋</button>
         <button class="dl-btn" id="dlBtn">Download</button>
+      </div>
+      <div class="fmt-row" style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;color:var(--muted)">Format</label>
+          <select id="fmtSelect" class="tier-select">
+            <option value="mp4">MP4 (Video)</option>
+            <option value="mp3">MP3 (Audio)</option>
+            <option value="webm">WebM</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;color:var(--muted)">Quality</label>
+          <select id="qualitySelect" class="tier-select">
+            <option value="1080">1080p</option>
+            <option value="720">720p</option>
+            <option value="480">480p</option>
+            <option value="360">360p</option>
+          </select>
+        </div>
       </div>
       <div class="platform-hint" id="platformHint" style="display:none"></div>
       <div class="tier-warn" id="tierWarn" style="display:none"></div>
@@ -251,7 +298,7 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
       <div class="result" id="resultCard" style="display:none">
         <div class="check">✓</div>
         <div class="info"><div class="name" id="resultName"></div><div class="meta" id="resultMeta"></div></div>
-        <a href="#" class="gdrive-link" id="resultLink" target="_blank">Open in Google Drive ↗</a>
+        <a href="#" class="cloud-link" id="resultLink" target="_blank">Open in Cloud ↗</a>
       </div>
     </div>
     <div class="card">
@@ -267,8 +314,8 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
       <div class="sub">Three simple steps — no redirects, everything happens right here.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:10px">
         <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">📋</div><div style="font-weight:600;margin-bottom:4px">1. Paste URL</div><div style="font-size:13px;color:var(--muted)">Copy any video link and paste it in the box above.</div></div>
-        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">⬇</div><div style="font-weight:600;margin-bottom:4px">2. Download</div><div style="font-size:13px;color:var(--muted)">We fetch the video and upload it to Google Drive.</div></div>
-        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">📁</div><div style="font-weight:600;margin-bottom:4px">3. Get Link</div><div style="font-size:13px;color:var(--muted)">Download or stream directly from your Google Drive link.</div></div>
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">⬇</div><div style="font-weight:600;margin-bottom:4px">2. Download</div><div style="font-size:13px;color:var(--muted)">We fetch the video and upload it to Cloud.</div></div>
+        <div style="padding:16px;background:rgba(0,0,0,0.25);border-radius:12px"><div style="font-size:24px;margin-bottom:8px">📁</div><div style="font-weight:600;margin-bottom:4px">3. Get Link</div><div style="font-size:13px;color:var(--muted)">Download or stream directly from your Cloud link.</div></div>
       </div>
     </div>
   </div>
@@ -356,6 +403,11 @@ tbody tr:hover{background:rgba(255,255,255,0.03)}
 </div>
 <div id="toasts"></div>
 
-<script src="app.js"></script>
+  <footer class="site-footer">
+    <div>YTDownload &copy; 2024 &mdash; Free Video Downloader</div>
+    <div style="margin-top:6px">Powered by yt-dlp &middot; No ads &middot; No tracking &middot; <a href="https://t.me/DJ_Hackrr" target="_blank">Contact @DJ_Hackrr</a></div>
+  </footer>
+
+  <script src="app.js"></script>
 </body>
 </html>

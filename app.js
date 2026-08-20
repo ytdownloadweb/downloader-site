@@ -230,10 +230,39 @@ function detectPlatform(url){
   return "Unknown";
 }
 
+/* ---- Clipboard paste ---- */
+function pasteFromClipboard(){
+  try{
+    navigator.clipboard.readText().then(function(text){
+      if(text && text.length > 5){
+        var input = document.getElementById("urlInput");
+        input.value = text.trim();
+        input.dispatchEvent(new Event("input"));
+        toast("Pasted from clipboard","success");
+      } else {
+        toast("Clipboard is empty","info");
+      }
+    }).catch(function(){
+      toast("Clipboard access denied. Paste manually.","info");
+    });
+  }catch(e){
+    toast("Clipboard not supported","info");
+  }
+}
+
 /* ---- Download ---- */
 function startDownload(){
   var url = document.getElementById("urlInput").value.trim();
   if(!url || url.length < 10){ toast("Enter a valid URL","error"); return; }
+  /* Client-side URL validation — bypass proof */
+  try{
+    var parsed = new URL(url);
+    if(parsed.protocol !== "http:" && parsed.protocol !== "https:"){
+      toast("Only http/https URLs are allowed","error"); return;
+    }
+  }catch(e){
+    toast("Invalid URL format","error"); return;
+  }
   if(!SERVER_URL){ toast("Server is offline. Please wait.","error"); return; }
 
   var platform = detectPlatform(url);
@@ -259,7 +288,9 @@ function startDownload(){
   document.getElementById("progressStage").textContent = "Starting…";
   document.getElementById("progressPct").textContent = "0%";
 
-  api("/api/download","POST",{url:url}).then(function(d){
+  var fmt = document.getElementById("fmtSelect") ? document.getElementById("fmtSelect").value : "mp4";
+  var quality = document.getElementById("qualitySelect") ? document.getElementById("qualitySelect").value : "1080";
+  api("/api/download","POST",{url:url,format:fmt,quality:quality}).then(function(d){
     if(d.error){
       document.getElementById("progressWrap").style.display = "none";
       document.getElementById("dlBtn").disabled = false;
@@ -314,7 +345,7 @@ function pollDownload(jobId){
         var sizeMB = d.filesize ? (d.filesize > 1073741824 ? (d.filesize/1073741824).toFixed(1)+" GB" : (d.filesize/1048576).toFixed(1)+" MB") : "";
         document.getElementById("resultMeta").textContent = sizeMB;
         var link = document.getElementById("resultLink");
-        if(d.gdrive_link){ link.href = d.gdrive_link; link.style.display = "inline-flex"; }
+        if(d.cloud_link){ link.href = d.cloud_link; link.style.display = "inline-flex"; }
         else { link.style.display = "none"; }
         toast("Download complete!","success");
         if(!currentUser) loadGuestQuota();
@@ -612,3 +643,4 @@ window.changeTier = changeTier;
 window.banUser = banUser;
 window.unbanUser = unbanUser;
 window.copyUPI = copyUPI;
+window.pasteFromClipboard = pasteFromClipboard;
