@@ -9,6 +9,14 @@ var TIER_COLORS = {free:"var(--t-free)",bronze:"var(--t-bronze)",silver:"var(--t
 var TIER_LABELS = {free:"Free",bronze:"Bronze",silver:"Silver",gold:"Gold",supreme:"Supreme"};
 var TIER_LIMITS = {free:"1 GB",bronze:"2 GB",silver:"5 GB",gold:"10 GB",supreme:"Unlimited"};
 var TIER_DAILY = {free:"5/24h",bronze:"10/24h",silver:"25/24h",gold:"50/24h",supreme:"Unlimited"};
+var TIER_PLATFORMS = {
+  guest:["YouTube"],
+  free:["YouTube"],
+  bronze:["YouTube","Instagram","TikTok","Facebook"],
+  silver:["YouTube","Instagram","TikTok","Facebook","Twitter/X","Reddit","Vimeo"],
+  gold:["YouTube","Instagram","TikTok","Facebook","Twitter/X","Reddit","Vimeo","Dailymotion","SoundCloud","Pinterest"],
+  supreme:"all"
+};
 var DONATION_DISMISSED = false;
 
 function toast(msg, type){
@@ -22,9 +30,18 @@ function toast(msg, type){
 function api(path, method, body){
   var opts = {method:method||"GET",headers:{"Content-Type":"application/json"},credentials:"include"};
   if(body) opts.body = JSON.stringify(body);
+  /* 30s timeout — server should respond quickly (probe moved to background) */
+  var ctrl = new AbortController();
+  opts.signal = ctrl.signal;
+  var timer = setTimeout(function(){ ctrl.abort(); }, 30000);
   return fetch(SERVER_URL + path, opts).then(function(r){
+    clearTimeout(timer);
     if(r.status === 401) return {error:"auth_required"};
-    return r.json().catch(function(){return {error:"Network error"}});
+    return r.json().catch(function(){return {error:"Could not reach server. It may be restarting — try again in a moment."}});
+  }).catch(function(err){
+    clearTimeout(timer);
+    if(err.name === "AbortError") return {error:"Request timed out. Server may be busy or restarting — try again."};
+    return {error:"Could not reach server. It may be offline or restarting."};
   });
 }
 
@@ -220,6 +237,16 @@ function startDownload(){
   if(!SERVER_URL){ toast("Server is offline. Please wait.","error"); return; }
 
   var platform = detectPlatform(url);
+  /* Client-side platform check — saves a round trip if tier doesn't support it */
+  var userTier = currentUser ? currentUser.tier : "guest";
+  var allowed = TIER_PLATFORMS[userTier];
+  if(allowed !== "all" && platform !== "Unknown" && allowed.indexOf(platform) < 0){
+    var tw = document.getElementById("tierWarn");
+    tw.innerHTML = "Your " + (userTier === "guest" ? "Guest" : userTier.charAt(0).toUpperCase()+userTier.slice(1)) + " tier does not support " + platform + ".<br>Allowed: " + allowed.join(", ") + "<br><br><a href=\"https://t.me/DJ_Hackrr\" target=\"_blank\" style=\"color:var(--accent2);font-weight:600\">Contact @DJ_Hackrr on Telegram to upgrade</a>";
+    tw.style.display = "block";
+    toast(platform + " not available on your tier","warn");
+    return;
+  }
   var hint = document.getElementById("platformHint");
   hint.style.display = "flex";
   hint.innerHTML = '<span class="platform-tag">' + platform + '</span> detected';
@@ -255,8 +282,10 @@ function startDownload(){
       }
       pollDownload(d.job_id);
     }
-  }).catch(function(){
-    toast("Network error","error");
+  }).catch(function(err){
+    /* Show the actual error from server, not just "Network error" */
+    var msg = (err && err.error) ? err.error : "Could not start download. Server may be restarting.";
+    toast(msg, "error");
     document.getElementById("dlBtn").disabled = false;
     document.getElementById("dlBtn").textContent = "Download";
     document.getElementById("progressWrap").style.display = "none";
