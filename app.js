@@ -164,10 +164,10 @@ function showDonatePopup(stage){
   var text = document.getElementById("donateText");
   if(stage === "start"){
     title.textContent = "Your download has started!";
-    text.innerHTML = "While you wait, consider supporting the developer.<br>Donators get extended support and direct chat access!";
+    text.innerHTML = "While you wait, consider supporting the developer.<br>Donors get extended support and direct chat access!";
   } else if(stage === "complete"){
-    title.textContent = "Download complete! 💜";
-    text.innerHTML = "If this saved you time, consider donating to support the server costs.<br>Donators get extended support and direct chat access!";
+    title.textContent = "Download complete! 🎉";
+    text.innerHTML = "If this saved you time, consider donating to support the server costs.<br>Donors get extended support and direct chat access!";
   }
   document.getElementById("donateModal").classList.add("show");
 }
@@ -242,7 +242,7 @@ function startDownload(){
         openLoginModal();
       } else if(d.error.indexOf("limit reached") >= 0 || d.error.indexOf("limit") >= 0){
         var tw = document.getElementById("tierWarn");
-        tw.innerHTML = d.error + '<br><br><a href="https://t.me/DJ_Hackrr" target="_blank" style="color:var(--accent2);font-weight:600">Contact @DJ_Hackrr on Telegram to upgrade →</a>';
+        tw.innerHTML = d.error + '<br><br><a href="https://t.me/DJ_Hackrr" target="_blank" style="color:var(--accent2);font-weight:600">Contact @DJ_Hackrr on Telegram to upgrade ➜</a>';
         tw.style.display = "block";
         toast(d.error,"warn");
       } else { toast(d.error,"error"); }
@@ -321,7 +321,7 @@ function loadHistory(){
     d.forEach(function(item){
       var size = item.size ? (item.size > 1073741824 ? (item.size/1073741824).toFixed(1)+" GB" : (item.size/1048576).toFixed(1)+" MB") : "—";
       var date = new Date(item.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
-      var link = item.link ? '<a href="'+item.link+'" target="_blank">Open ↗</a>' : '—';
+      var link = item.link ? '<a href="'+item.link+'" target="_blank">Open ➜</a>' : '—';
       html += '<tr><td>'+escapeHtml(item.title||"")+'</td><td>'+escapeHtml(item.platform||"")+'</td><td>'+size+'</td><td>'+date+'</td><td>'+link+'</td></tr>';
     });
     html += '</tbody></table>';
@@ -406,7 +406,7 @@ function loadAdmin(){
     var html = '';
     d.forEach(function(l){
       var t = l.created_at ? new Date(l.created_at).toLocaleString("en-IN") : "";
-      html += '<div class="row"><span><b>'+escapeHtml(l.event||"")+'</b>'+(l.ip?' (📍 '+escapeHtml(l.ip)+')':'')+'</span><span class="when">'+t+'</span></div>';
+      html += '<div class="row"><span><b>'+escapeHtml(l.event||"")+'</b>'+(l.ip?' (🇮🇳 '+escapeHtml(l.ip)+')':'')+'</span><span class="when">'+t+'</span></div>';
     });
     document.getElementById("adminLogList").innerHTML = html;
   }).catch(function(){});
@@ -433,7 +433,12 @@ function unbanUser(username){
 
 function escapeHtml(s){
   if(!s) return "";
-  return String(s).replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,""").replace(/'/g,"&#39;");
+  var a = String.fromCharCode(38,97,109,112,59);  // &
+  var b = String.fromCharCode(38,108,116,59);      // <
+  var c = String.fromCharCode(38,103,116,59);      // >
+  var d = String.fromCharCode(38,113,117,111,116,59); // "
+  var e = String.fromCharCode(38,35,52,57,59);    // apostrophe entity
+  return String(s).replace(/&/g,a).replace(/</g,b).replace(/>/g,c).replace(/"/g,d).replace(/'/g,e);
 }
 
 /* ---- Init ---- */
